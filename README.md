@@ -1,6 +1,6 @@
 # ⌨️ Macro Keypad Configurator
 
-A fully self-contained, browser-based configurator for the **MINI KeyBoard V03.1.1** — a 6-key macro pad with a rotary encoder (knob). No installation required. Open the HTML file in Chrome or Edge and you're ready to go.
+A fully self-contained, browser-based configurator for the **MINI KeyBoard** — a 6-key macro pad with a rotary encoder (knob). No installation required. Open the HTML file in Chrome or Edge and you're ready to go.
 
 ---
 
@@ -15,7 +15,9 @@ A fully self-contained, browser-based configurator for the **MINI KeyBoard V03.1
 - **Knob support** — configure CCW turn, CW turn, and Press independently
 - **Live Detection** — press physical keys with detection mode on to flash the matching pad key in the UI
 - **Key Capture** — click "Capture" on any slot and press the physical key to auto-map it
-- **WebHID integration** — send config directly to the device over USB (Chrome/Edge only)
+- **Per-preset color themes** — the UI color scheme automatically changes to match the loaded preset (Media, Photoshop, Gaming, etc.)
+- **WebHID integration** — send config directly to the device over USB (Chrome/Edge only), with tools to send active layer, all layers at once, cycle/reopen the HID device, scan the HID descriptor, and run a diagnostic write
+- **Key Map & Assignments panel** — table showing each key's detected code, assignment, firmware packet, and status side by side
 - **Import / Export** — save and share profiles as JSON
 - **6 built-in presets** — Media, Productivity, Photoshop, Browser, Gaming, MS Excel
 - **Collapsible device layout panel** — click the header to hide/show the visual key layout
@@ -25,12 +27,12 @@ A fully self-contained, browser-based configurator for the **MINI KeyBoard V03.1
 
 ## Usage
 
-1. Open `keypad-configurator-final-stable_version.html` in **Chrome** or **Edge**
+1. Open `keypad-configurator-v3.2.html` in **Chrome** or **Edge**
 2. *(Optional)* Click **Connect WebHID** to pair the physical device over USB
 3. Select a **Layer** tab (1, 2, or 3)
 4. Click any key or knob control in the **Device Layout** to open its editor
 5. Pick an action type, configure it, and click **✓ Save Assignment**
-6. When done, click **🔄 Send New Config to Device** to write to the pad
+6. When done, click **🔄 Send New Config to Active Layer** to write to the pad (or **Send All Layers** to write all three at once)
 
 > **Note:** WebHID is only available in Chromium-based browsers (Chrome, Edge). Key detection via keyboard events works in any browser.
 
@@ -40,8 +42,8 @@ A fully self-contained, browser-based configurator for the **MINI KeyBoard V03.1
 
 ```
 Keyboard_Config/
-├── keypad-configurator-final-stable_version.html   # Main app (single-file)
-└── README.md                                        # This file
+├── keypad-configurator-v3.2.html   # Main app (single-file, v3.2.2)
+└── README.md                        # This file
 ```
 
 The entire application is a **single HTML file** with no external dependencies — all CSS, JavaScript, and markup are self-contained.
@@ -53,7 +55,7 @@ The entire application is a **single HTML file** with no external dependencies �
 | Field       | Value              |
 |-------------|--------------------|
 | Device name | MINI KeyBoard      |
-| Firmware    | V03.1.1            |
+| App version | v3.2.2             |
 | OS          | Windows            |
 | USB VID     | `0x1189`           |
 | USB PID     | `0x8890`           |
