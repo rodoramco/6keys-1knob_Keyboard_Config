@@ -1,0 +1,13 @@
+# OS generated
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor directories
+.vscode/
+.idea/
+
+# Local backups
+*.bak
+*.orig
+*~
