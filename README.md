@@ -2,6 +2,9 @@
 
 A fully self-contained, browser-based configurator for the **MINI KeyBoard** — a 6-key macro pad with a rotary encoder (knob). No installation required. Open the HTML file in Chrome or Edge and you're ready to go.
 
+> **v3.3.0 — Mouse-aware macros.** Build macros from a visual step list:
+> Type Text · Key Combo · Mouse Click · Mouse Wheel · Wait. Mouse playback runs through a generated AutoHotkey v2 helper script (the dongle's firmware can only emit keyboard / consumer-control events). The previous textarea-based macro syntax still loads — old profiles auto-migrate to the new step model on first save.
+
 ---
 
 ## Features
@@ -10,7 +13,7 @@ A fully self-contained, browser-based configurator for the **MINI KeyBoard** —
 - **4 action types per key**
   - `Shortcut` — any modifier + key combination (Ctrl, Shift, Alt, Win)
   - `Media` — Play/Pause, Stop, Next, Prev, Vol Up/Down, Mute, Brightness
-  - `Macro` — text or keystroke sequences with configurable delay
+  - `Macro` — **(v3.3)** ordered step list combining Type Text, Key Combo, Mouse Click (left/right/middle/double, optional fixed XY), Mouse Wheel up/down/click with tick count, and Wait — replayed by an auto-generated AutoHotkey helper
   - `App` — common system shortcuts (Screenshot, Task Manager, Explorer, Lock, etc.)
 - **Knob support** — configure CCW turn, CW turn, and Press independently
 - **Live Detection** — press physical keys with detection mode on to flash the matching pad key in the UI
@@ -27,7 +30,7 @@ A fully self-contained, browser-based configurator for the **MINI KeyBoard** —
 
 ## Usage
 
-1. Open `keypad-configurator-v3.2.html` in **Chrome** or **Edge**
+1. Open `keypad-configurator-v3.3.html` in **Chrome** or **Edge** (v3.2 still ships in the repo for backwards compatibility)
 2. *(Optional)* Click **Connect WebHID** to pair the physical device over USB
 3. Select or create a **Profile** using the profile bar at the top of the page
 4. Click any key or knob control in the **Device Layout** to open its editor on the right
@@ -65,13 +68,55 @@ All profile changes are saved to `localStorage` automatically — no manual save
 |----------|-------------|
 | ⌨ Shortcut | Sends a key + modifier combo (e.g. Ctrl+Z, Win+Shift+S) |
 | 🎵 Media   | Sends a media command (Play/Pause, Vol Up/Down, Mute, etc.) |
-| 📝 Macro   | Types a text string or key sequence with optional delay |
+| 📝 Macro   | Plays an ordered step list (Type Text · Key Combo · Mouse Click · Wheel · Wait) via the generated AHK helper |
 | 🖥 App     | Triggers a system shortcut (Screenshot, Task Manager, Lock, etc.) |
 
 4. Configure the action, then click **✓ Save Assignment** — the key label in the layout updates immediately
 5. To remove an assignment, open the editor for that key and click **✗ Clear**
 
 **Key Capture:** Enable **Live Detection** in the bar at the top, then click **Capture** on any key slot and press the physical key — it will auto-detect and map the keycode.
+
+---
+
+## Mouse Macros (v3.3)
+
+The Macro action type is now a **step-list builder**. Each macro is an ordered sequence of steps you compose visually in the editor. Step types:
+
+| Step | What it does |
+|------|--------------|
+| Type Text | Sends a literal text string (no shortcut interpretation) |
+| Key Combo | Modifier(s) + key (e.g. Ctrl+C, Alt+F4) |
+| Mouse Click | Left / Right / Middle / Double Left — at the cursor by default, optional fixed X,Y in screen pixels |
+| Mouse Wheel | Up / Down / Wheel-Click with a tick count |
+| Wait | Pause for N milliseconds before the next step |
+
+You can reorder steps with ▲/▼, remove with ✕, or **Clear All**. There is also a **Default delay between steps** (ms) used between every step unless you add an explicit Wait.
+
+### How playback actually works
+
+The dongle's firmware speaks only HID keyboard (`type=0x01`) and HID consumer-control (`type=0x02`). It cannot emit mouse events directly. So when a slot is set to `Macro`, the configurator programs the firmware to emit a hidden trigger combo for that slot:
+
+```
+K1 → Ctrl+Alt+Shift+F13     knob-left  → Ctrl+Alt+Shift+F19
+K2 → Ctrl+Alt+Shift+F14     knob-click → Ctrl+Alt+Shift+F20
+K3 → Ctrl+Alt+Shift+F15     knob-right → Ctrl+Alt+Shift+F21
+K4 → Ctrl+Alt+Shift+F16
+K5 → Ctrl+Alt+Shift+F17
+K6 → Ctrl+Alt+Shift+F18
+```
+
+A small **AutoHotkey v2** script (generated from the **🖱 Macro Helper (AHK)** card in the sidebar) listens for these trigger combos and replays the configured steps — including mouse clicks and wheel scrolls.
+
+### Setup
+
+1. Configure your macro slots in the v3.3 page.
+2. Click **🔄 Send New Config to Active Layer** to write the trigger combos to the dongle.
+3. Click **💾 Download .ahk** in the **Macro Helper (AHK)** card.
+4. Install [AutoHotkey v2](https://www.autohotkey.com/) if you haven't.
+5. Double-click the downloaded `.ahk` file. A green H tray icon appears.
+6. Press a macro-assigned pad key — your sequence runs.
+
+Re-export the `.ahk` script every time you change a macro. Right-click the AHK tray icon to reload or exit.
 
 ---
 
@@ -105,11 +150,13 @@ The **Send to Dongle** card handles USB communication. Requires **Connect WebHID
 
 ```
 Keyboard_Config/
-├── keypad-configurator-v3.2.html   # Main app (single-file, v3.2.2)
-└── README.md                        # This file
+├── keypad-configurator-v3.3.html   # Main app (single-file, v3.3.0 — step-list macros + mouse via AHK)
+├── keypad-configurator-v3.2.html   # Previous release (single-file, v3.2.2 — kept for compatibility)
+├── RELEASE_NOTES_v3.3.md           # Release notes for v3.3.0
+└── README.md                       # This file
 ```
 
-The entire application is a **single HTML file** with no external dependencies — all CSS, JavaScript, and markup are self-contained.
+The entire application is a **single HTML file** with no external dependencies — all CSS, JavaScript, and markup are self-contained. Mouse playback uses an AutoHotkey v2 script generated by the app at runtime.
 
 ---
 
@@ -118,12 +165,13 @@ The entire application is a **single HTML file** with no external dependencies �
 | Field       | Value              |
 |-------------|--------------------|
 | Device name | MINI KeyBoard      |
-| App version | v3.2.2             |
+| App version | v3.3.0             |
 | OS          | Windows            |
 | USB VID     | `0x1189`           |
 | USB PID     | `0x8890`           |
 | Keys        | 6 + 1 rotary knob  |
 | HID API     | WebHID (report ID `0x03`) |
+| Mouse path  | AutoHotkey v2 helper script |
 
 ---
 

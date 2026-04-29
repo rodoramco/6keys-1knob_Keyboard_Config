@@ -1,0 +1,2765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Macro Keypad Configurator v3.3</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a24;
+    --surface2: #22222f;
+    --surface3: #2a2a3a;
+    --border: #33334a;
+    --accent1: #6c63ff;
+    --accent2: #00d4aa;
+    --accent3: #ff6b6b;
+    --accent4: #ffd93d;
+    --text: #e8e8f0;
+    --text2: #8888aa;
+    --text3: #555570;
+  }
+  /* ── PER-PRESET PAGE THEMES ── */
+  body { transition: background-color .35s ease, --accent1 .35s ease; }
+  body.preset-media        { --bg:#100a00; --surface:#1c1200; --surface2:#231800; --surface3:#2b1f00; --border:#3d2e00; --accent1:#ff9800; --accent2:#ff6b6b; }
+  body.preset-productivity { --bg:#020c18; --surface:#05162a; --surface2:#071c34; --surface3:#0a233e; --border:#0f3560; --accent1:#40c4ff; --accent2:#00d4aa; }
+  body.preset-photoshop    { --bg:#0e0516; --surface:#190a24; --surface2:#200d2e; --surface3:#281038; --border:#3e1558; --accent1:#e040fb; --accent2:#6c63ff; }
+  body.preset-browser      { --bg:#001414; --surface:#002424; --surface2:#002e2e; --surface3:#003838; --border:#005050; --accent1:#00e5cc; --accent2:#40c4ff; }
+  body.preset-gaming       { --bg:#060f02; --surface:#0c1c04; --surface2:#102306; --surface3:#142b08; --border:#1e4209; --accent1:#b4ff00; --accent2:#00d4aa; }
+  body.preset-excel        { --bg:#021008; --surface:#041e0e; --surface2:#062614; --surface3:#082e18; --border:#0c4824; --accent1:#00e676; --accent2:#40c4ff; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+
+  /* ── HEADER ── */
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .header h1 { font-size: 19px; font-weight: 700; }
+  .header p { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+
+  /* ── DETECT BAR ── */
+  .detect-bar {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 16px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .detect-toggle {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    padding: 6px 14px; border-radius: 8px; border: 1.5px solid var(--border);
+    font-size: 12px; font-weight: 700; color: var(--text2); background: var(--surface2);
+    transition: all .15s; user-select: none;
+  }
+  .detect-toggle.active {
+    border-color: var(--accent3); color: var(--accent3);
+    background: rgba(255,107,107,.1);
+    animation: pulse-border 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse-border {
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,107,107,0); }
+    50%      { box-shadow: 0 0 0 4px rgba(255,107,107,.2); }
+  }
+  .rec-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--text3);
+    transition: background .15s;
+  }
+  .detect-toggle.active .rec-dot { background: var(--accent3); animation: blink 1s step-end infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  .hid-btn {
+    padding: 6px 14px; border-radius: 8px; border: 1.5px solid var(--border);
+    font-size: 12px; font-weight: 700; color: var(--text2); background: var(--surface2);
+    cursor: pointer; transition: all .15s;
+  }
+  .hid-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .hid-btn.connected { border-color: var(--accent2); color: var(--accent2); background: rgba(0,212,170,.1); }
+  .hid-btn.unavailable { opacity: .4; cursor: not-allowed; }
+
+  .detect-log {
+    flex: 1; min-width: 200px;
+    font-size: 11px; color: var(--text2);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .detect-log-label { color: var(--text3); font-weight: 600; }
+  .key-pill {
+    background: var(--surface3); border: 1px solid var(--border);
+    border-radius: 5px; padding: 2px 8px; font-size: 11px; font-weight: 700;
+    color: var(--text); animation: pop-in .1s ease-out;
+  }
+  @keyframes pop-in { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .no-input-msg { color: var(--text3); font-style: italic; font-size: 11px; }
+
+  /* Capture mode overlay on keycap */
+  .keycap.capturing {
+    border-color: var(--accent4) !important;
+    box-shadow: 0 4px 0 #08080e, 0 0 20px rgba(255,217,61,.5) !important;
+    animation: capture-pulse .6s ease-in-out infinite !important;
+  }
+  @keyframes capture-pulse {
+    0%,100% { transform: translateY(-2px); }
+    50%      { transform: translateY(-4px); }
+  }
+  /* Flash on key press detected */
+  .keycap.pressed {
+    background: linear-gradient(160deg, #4a4a6a 0%, #353550 60%, #2a2a44 100%) !important;
+    transform: translateY(1px) !important;
+  }
+
+  /* ── PROFILE BAR ── */
+  .profile-bar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; justify-content: space-between; }
+  .preset-btn {
+    margin-left: auto; padding: 7px 14px; border-radius: 8px; font-size: 12px;
+    font-weight: 600; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text2); cursor: pointer; transition: all .15s;
+  }
+  .preset-btn:hover { border-color: var(--accent1); color: var(--accent1); }
+
+  /* ── MAIN LAYOUT ── */
+  .main { display: grid; grid-template-columns: 1fr 340px; gap: 18px; }
+
+  /* ── DEVICE CARD ── */
+  .device-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
+  .device-card-title { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 18px; }
+
+  /* ── PHYSICAL SHELL ── */
+  .device-shell {
+    background: #111118; border: 2px solid #2c2c3e; border-radius: 14px;
+    padding: 18px 16px 16px; display: inline-flex; align-items: center; gap: 18px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.04);
+    position: relative;
+  }
+  .device-shell::before {
+    content: ''; position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    width: 10px; height: 12px; background: #222230; border-radius: 3px 3px 0 0; border: 1px solid #333;
+  }
+
+  .keys-section { display: flex; flex-direction: column; gap: 9px; }
+  .keys-row { display: flex; gap: 9px; }
+
+  .keycap {
+    width: 76px; height: 76px;
+    background: linear-gradient(160deg, #363646 0%, #252533 60%, #1e1e2a 100%);
+    border-radius: 9px; border: 1.5px solid #444458; border-bottom: 4px solid #111120;
+    box-shadow: 0 4px 0 #08080e, 0 6px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08);
+    cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 5px; transition: all .1s; position: relative; user-select: none;
+  }
+  .keycap:hover {
+    background: linear-gradient(160deg, #42425a 0%, #2e2e44 60%, #262636 100%);
+    border-color: #6060aa; transform: translateY(-2px);
+    box-shadow: 0 6px 0 #08080e, 0 10px 20px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12);
+  }
+  .keycap:active { transform: translateY(2px); box-shadow: 0 2px 0 #08080e, 0 3px 8px rgba(0,0,0,.5); border-bottom-width: 2px; }
+  .keycap.selected { border-color: #6c63ff !important; box-shadow: 0 4px 0 #08080e, 0 0 16px rgba(108,99,255,.4), inset 0 1px 0 rgba(255,255,255,.1) !important; }
+  .keycap.assigned-l1  { border-color: rgba(108,99,255,.6); }
+  .keycap.assigned-l2  { border-color: rgba(0,212,170,.6); }
+  .keycap.assigned-l3  { border-color: rgba(255,107,107,.6); }
+  .keycap.assigned-l4  { border-color: rgba(255,217,61,.6); }
+  .keycap.assigned-l5  { border-color: rgba(79,195,247,.6); }
+  .keycap.assigned-l6  { border-color: rgba(244,143,177,.6); }
+  .keycap.assigned-l7  { border-color: rgba(165,214,167,.6); }
+  .keycap.assigned-l8  { border-color: rgba(255,138,101,.6); }
+  .keycap.assigned-l9  { border-color: rgba(206,147,216,.6); }
+  .keycap.assigned-l10 { border-color: rgba(128,203,196,.6); }
+  .key-id { font-size: 9px; font-weight: 800; letter-spacing: .6px; color: rgba(255,255,255,.25); text-transform: uppercase; }
+  .key-label { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.9); text-align: center; line-height: 1.2; padding: 0 4px; max-width: 68px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .key-label.empty { color: rgba(255,255,255,.2); font-weight: 400; }
+  .key-label.capture-hint { color: var(--accent4); font-size: 10px; font-weight: 700; }
+  .type-pip { width: 6px; height: 6px; border-radius: 50%; position: absolute; bottom: 7px; right: 7px; }
+  /* Detected keycode badge on keycap */
+  .key-raw { font-size: 8px; color: rgba(255,255,255,.3); position: absolute; top: 5px; right: 5px; max-width: 32px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── KNOB ── */
+  .knob-section { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .knob-label-top { font-size: 9px; font-weight: 700; letter-spacing: .8px; color: rgba(255,255,255,.2); text-transform: uppercase; }
+  .knob-body {
+    width: 88px; height: 88px; border-radius: 50%;
+    background: radial-gradient(circle at 38% 32%, #5a5a72 0%, #2a2a3e 45%, #111118 100%);
+    border: 2px solid #3a3a52;
+    box-shadow: 0 6px 0 #08080e, 0 8px 20px rgba(0,0,0,.6), inset 0 2px 4px rgba(255,255,255,.08);
+    cursor: pointer; position: relative; display: flex; align-items: center; justify-content: center; transition: all .1s;
+  }
+  .knob-body:hover { box-shadow: 0 6px 0 #08080e, 0 8px 20px rgba(0,0,0,.6), 0 0 16px rgba(0,212,170,.25); }
+  .knob-body.selected { border-color: var(--accent2); box-shadow: 0 6px 0 #08080e, 0 0 20px rgba(0,212,170,.4); }
+  .knob-body.pressed { background: radial-gradient(circle at 38% 32%, #6a6a88 0%, #3a3a52 45%, #1a1a28 100%) !important; }
+  .knob-body::after { content: ''; position: absolute; top: 9px; left: 50%; transform: translateX(-50%); width: 3px; height: 15px; background: rgba(255,255,255,.25); border-radius: 2px; }
+  .knob-click-badge { font-size: 8px; color: rgba(255,255,255,.3); font-weight: 700; letter-spacing: .3px; position: absolute; bottom: 16px; }
+  .knob-assigned-label { font-size: 10px; color: rgba(255,255,255,.4); text-align: center; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .knob-turns { display: flex; gap: 6px; align-items: center; }
+  .knob-turn-btn {
+    background: #1a1a28; border: 1.5px solid #333344; border-radius: 8px; padding: 5px 7px;
+    cursor: pointer; font-size: 10px; font-weight: 700; color: rgba(255,255,255,.4);
+    transition: all .12s; min-width: 36px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .knob-turn-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .knob-turn-btn.selected { border-color: var(--accent2); color: var(--accent2); background: rgba(0,212,170,.08); }
+  .knob-turn-btn.assigned { border-color: rgba(0,212,170,.4); }
+  .knob-turn-btn.pressed { background: rgba(0,212,170,.2) !important; border-color: var(--accent2) !important; }
+  .knob-turn-icon { font-size: 13px; }
+  .knob-turn-label { font-size: 8px; letter-spacing: .3px; }
+  .knob-turn-val { font-size: 9px; color: var(--text); max-width: 54px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Floating tooltip for overflowing knob labels */
+  .knob-turn-btn { position: relative; }
+  .knob-full-label {
+    display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: #222236; border: 1px solid var(--border); border-radius: 6px;
+    padding: 4px 8px; font-size: 10px; color: var(--text); white-space: nowrap;
+    pointer-events: none; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,.5);
+  }
+  .knob-turn-btn:hover .knob-full-label { display: block; }
+
+  /* ── SUMMARY ── */
+  .summary-area { margin-top: 18px; }
+  .summary-title { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; }
+  .summary-grid { display: flex; flex-direction: column; gap: 4px; }
+  .sum-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 7px; background: var(--surface2); font-size: 11px; cursor: pointer; transition: background .1s; }
+  .sum-row:hover { background: var(--surface3); }
+  .sum-key { font-size: 10px; font-weight: 700; color: var(--text2); min-width: 60px; }
+  .sum-val { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sum-type { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+  .t-shortcut { background: rgba(108,99,255,.2); color: #6c63ff; }
+  .t-media { background: rgba(0,212,170,.2); color: #00d4aa; }
+  .t-macro { background: rgba(255,217,61,.2); color: #ffd93d; }
+  .t-app { background: rgba(255,107,107,.2); color: #ff6b6b; }
+  .no-sel { color: var(--text3); font-size: 12px; text-align: center; padding: 12px 0; }
+
+  /* ── SIDEBAR ── */
+  .sidebar { display: flex; flex-direction: column; gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .card-title { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 12px; }
+
+  /* ── EDITOR ── */
+  .sel-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .sel-badge { background: var(--surface3); border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; font-size: 15px; font-weight: 700; min-width: 42px; text-align: center; }
+  .sel-title { font-size: 13px; font-weight: 600; }
+  .sel-sub { font-size: 11px; color: var(--text2); }
+  .capture-btn {
+    margin-left: auto; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    border: 1.5px solid var(--border); color: var(--text2); background: var(--surface2);
+    cursor: pointer; transition: all .15s;
+  }
+  .capture-btn:hover { border-color: var(--accent4); color: var(--accent4); }
+  .capture-btn.capturing { border-color: var(--accent4); color: var(--accent4); background: rgba(255,217,61,.1); animation: pulse-border-yellow .8s infinite; }
+  @keyframes pulse-border-yellow { 0%,100%{box-shadow:0 0 0 0 rgba(255,217,61,0)} 50%{box-shadow:0 0 0 4px rgba(255,217,61,.2)} }
+
+  .type-tabs { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 12px; }
+  .type-tab { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); color: var(--text2); background: var(--surface2); transition: all .12s; }
+  .type-tab.active { background: rgba(108,99,255,.2); border-color: #6c63ff; color: #6c63ff; }
+
+  .form-group { margin-bottom: 10px; }
+  .form-label { font-size: 11px; color: var(--text2); font-weight: 600; margin-bottom: 5px; display: block; }
+  .mod-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .mod-btn { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); color: var(--text2); background: var(--surface2); transition: all .12s; }
+  .mod-btn.active { background: rgba(108,99,255,.2); border-color: #6c63ff; color: #6c63ff; }
+  .form-select, .form-input { width: 100%; padding: 7px 9px; background: var(--surface3); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 12px; outline: none; transition: border .12s; }
+  .form-select:focus, .form-input:focus { border-color: #6c63ff; }
+  .form-input::placeholder { color: var(--text3); }
+  .form-textarea { width: 100%; padding: 7px 9px; background: var(--surface3); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 12px; font-family: 'Consolas', monospace; outline: none; resize: vertical; min-height: 58px; transition: border .12s; }
+  .form-textarea:focus { border-color: #6c63ff; }
+  .media-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .media-btn { padding: 7px 4px; border-radius: 7px; font-size: 17px; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); transition: all .12s; text-align: center; }
+  .media-lbl { font-size: 9px; color: var(--text2); font-weight: 600; margin-top: 2px; }
+  .media-btn:hover { border-color: var(--accent2); }
+  .media-btn.active { background: rgba(0,212,170,.12); border-color: var(--accent2); }
+  .app-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .app-btn { padding: 6px 8px; border-radius: 7px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); transition: all .12s; display: flex; align-items: center; gap: 5px; }
+  .app-btn:hover { border-color: #555; color: var(--text); }
+  .app-btn.active { background: rgba(108,99,255,.12); border-color: #6c63ff; color: #6c63ff; }
+  .save-btn { width: 100%; padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; background: #6c63ff; color: white; transition: all .12s; margin-top: 4px; }
+  .save-btn:hover { background: #7c74ff; }
+  .clear-btn { width: 100%; padding: 7px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; background: transparent; border: 1px solid var(--border); color: var(--text2); transition: all .12s; margin-top: 5px; }
+  .clear-btn:hover { border-color: #ff6b6b; color: #ff6b6b; }
+
+  /* ── DETECTED KEY MAP TABLE ── */
+  .map-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .map-table th { text-align: left; color: var(--text3); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+  .map-table td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,.04); }
+  .map-table tr:last-child td { border-bottom: none; }
+  .map-code { font-family: 'Consolas', monospace; background: var(--surface3); border-radius: 3px; padding: 1px 5px; font-size: 10px; }
+  .map-status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
+  .dot-assigned { background: #6c63ff; }
+  .dot-detected { background: #00d4aa; }
+  .dot-empty { background: #333; }
+
+  /* ── EXPORT ── */
+  .export-row { display: flex; gap: 7px; }
+  .exp-btn { flex: 1; padding: 8px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); transition: all .12s; }
+  .exp-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .exp-msg { font-size: 11px; color: var(--accent2); margin-top: 7px; display: none; }
+
+  /* ── SEND TO DONGLE ── */
+  .dongle-btn {
+    width: 100%; padding: 9px; border-radius: 8px; font-size: 12px; font-weight: 700;
+    cursor: pointer; border: 1.5px solid var(--border); background: var(--surface2);
+    color: var(--text2); transition: all .12s; margin-top: 5px;
+  }
+  .dongle-btn:hover { border-color: #6c63ff; color: #6c63ff; }
+  .dongle-btn.primary { background: linear-gradient(135deg,#6c63ff,#5a52e0); border-color: #6c63ff; color: white; }
+  .dongle-btn.primary:hover { background: linear-gradient(135deg,#7c74ff,#6c63ff); }
+  .dongle-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .dongle-log {
+    margin-top: 9px; background: #0a0a0f; border: 1px solid var(--border);
+    border-radius: 7px; padding: 7px 9px; max-height: 130px; overflow-y: auto;
+    font-family: 'Consolas', monospace; font-size: 10px;
+  }
+  .dongle-status {
+    display: flex; align-items: center; gap: 6px; font-size: 11px;
+    color: var(--text2); margin-bottom: 8px;
+  }
+  .dongle-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+  .dongle-dot.on { background: var(--accent2); box-shadow: 0 0 5px rgba(0,212,170,.5); }
+
+  /* ── SEND FEEDBACK OVERLAY ── */
+  .send-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.82); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+  }
+  .send-overlay.active { display: flex; }
+  .send-overlay-text {
+    font-size: 22px; font-weight: 800; letter-spacing: .5px; color: #fff;
+  }
+  .send-overlay-sub { font-size: 13px; color: rgba(255,255,255,.5); margin-top: -6px; }
+  .send-progress-track {
+    width: 260px; height: 6px; background: rgba(255,255,255,.12);
+    border-radius: 99px; overflow: hidden;
+  }
+  .send-progress-fill {
+    height: 100%; width: 0%; background: var(--accent2);
+    border-radius: 99px;
+    transition: width .12s ease-out;
+  }
+  .send-progress-fill.done { background: var(--accent2); transition: width .08s ease-out; }
+
+
+  /* ── PRESET OVERLAY ── */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 100; align-items: center; justify-content: center; }
+  .overlay.open { display: flex; }
+  .preset-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; width: 430px; max-height: 85vh; overflow-y: auto; }
+  .preset-box h2 { font-size: 15px; margin-bottom: 14px; }
+  .preset-list { display: flex; flex-direction: column; gap: 7px; }
+  .preset-item { padding: 11px 14px; border-radius: 10px; border: 1px solid var(--border); cursor: pointer; background: var(--surface2); transition: all .12s; }
+  .preset-item:hover { border-color: #6c63ff; background: rgba(108,99,255,.07); }
+  .preset-item h4 { font-size: 13px; margin-bottom: 3px; }
+  .preset-item p { font-size: 11px; color: var(--text2); }
+  .overlay-close { margin-top: 12px; width: 100%; padding: 8px; border-radius: 8px; background: transparent; border: 1px solid var(--border); color: var(--text2); font-size: 13px; cursor: pointer; }
+
+  select option { background: #1a1a24; }
+
+  /* ── COLLAPSIBLE DEVICE CARD ── */
+  .device-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0; cursor: pointer; user-select: none;
+  }
+  .device-card-header:hover .collapse-chevron { color: var(--text); }
+  .collapse-chevron {
+    font-size: 13px; color: var(--text3); transition: transform .2s ease, color .15s;
+    line-height: 1;
+  }
+  .collapse-chevron.open { transform: rotate(180deg); }
+  .device-card-body {
+    overflow: hidden;
+    max-height: 2000px;
+    transition: max-height .3s ease, opacity .25s ease, margin-top .25s ease;
+    opacity: 1;
+    margin-top: 18px;
+  }
+  .device-card-body.collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    pointer-events: none;
+  }
+
+  /* ── COMPACT DEVICE LAYOUT (side-by-side shell + summary) ── */
+  .device-layout-inner {
+    display: flex; align-items: flex-start; gap: 20px;
+  }
+  .device-layout-inner .device-shell { flex-shrink: 0; }
+  .device-layout-inner .summary-area { flex: 1; margin-top: 0; min-width: 0; }
+
+  /* ── MACRO STEP-LIST BUILDER (v3.3) ── */
+  .step-toolbar {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;
+    margin-bottom: 8px;
+  }
+  .step-add-btn {
+    padding: 6px 4px; border-radius: 7px; font-size: 10px; font-weight: 700;
+    cursor: pointer; border: 1px dashed var(--border); background: var(--surface2);
+    color: var(--text2); transition: all .12s; text-align: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  }
+  .step-add-btn:hover { border-color: var(--accent4); color: var(--accent4); border-style: solid; background: rgba(255,217,61,.06); }
+  .step-add-btn .step-add-icon { font-size: 14px; line-height: 1; }
+  .step-list {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-bottom: 10px; max-height: 280px; overflow-y: auto;
+    padding: 4px; border: 1px solid var(--border); border-radius: 8px;
+    background: rgba(0,0,0,.18);
+  }
+  .step-list-empty {
+    padding: 16px 10px; text-align: center; color: var(--text3); font-size: 11px;
+    font-style: italic;
+  }
+  .step-row {
+    display: grid; grid-template-columns: 22px 1fr auto; gap: 6px;
+    align-items: center;
+    padding: 6px 8px; border-radius: 7px;
+    background: var(--surface2); border: 1px solid var(--border);
+    transition: border-color .12s;
+  }
+  .step-row:hover { border-color: var(--accent4); }
+  .step-row.invalid { border-color: var(--accent3); background: rgba(255,107,107,.06); }
+  .step-num { font-size: 10px; font-weight: 800; color: var(--text3); text-align: center; user-select: none; }
+  .step-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .step-body-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .step-type-pill { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+  .step-type-text   { background: rgba(255,217,61,.18);  color: #ffd93d; }
+  .step-type-combo  { background: rgba(108,99,255,.18);  color: #6c63ff; }
+  .step-type-click  { background: rgba(0,212,170,.18);   color: #00d4aa; }
+  .step-type-wheel  { background: rgba(64,196,255,.20);  color: #40c4ff; }
+  .step-type-wait   { background: rgba(150,150,170,.22); color: #aaaab8; }
+  .step-input-mini {
+    padding: 3px 6px; background: var(--surface3); border: 1px solid var(--border);
+    border-radius: 5px; color: var(--text); font-size: 11px; font-family: 'Consolas', monospace;
+    outline: none; min-width: 0;
+  }
+  .step-input-mini:focus { border-color: var(--accent4); }
+  .step-input-mini.full { flex: 1; }
+  .step-input-num { width: 56px; }
+  .step-select-mini {
+    padding: 3px 6px; background: var(--surface3); border: 1px solid var(--border);
+    border-radius: 5px; color: var(--text); font-size: 11px; outline: none;
+  }
+  .step-mod-row { display: flex; gap: 3px; flex-wrap: wrap; }
+  .step-mod-btn {
+    padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700;
+    cursor: pointer; border: 1px solid var(--border); color: var(--text3);
+    background: var(--surface3); transition: all .1s; user-select: none;
+  }
+  .step-mod-btn.active { background: rgba(108,99,255,.2); border-color: #6c63ff; color: #6c63ff; }
+  .step-controls { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+  .step-ctrl-btn {
+    width: 22px; height: 14px; padding: 0; border-radius: 3px;
+    background: transparent; border: 1px solid var(--border); color: var(--text3);
+    cursor: pointer; font-size: 10px; line-height: 1; transition: all .1s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-ctrl-btn:hover { color: var(--text); border-color: var(--text2); }
+  .step-ctrl-btn.del:hover { color: var(--accent3); border-color: var(--accent3); }
+  .step-ctrl-btn:disabled { opacity: .25; cursor: not-allowed; }
+  .step-coord-row { display: flex; gap: 5px; align-items: center; }
+  .step-coord-row label { font-size: 10px; color: var(--text3); display: inline-flex; align-items: center; gap: 4px; }
+  .step-info {
+    font-size: 10px; color: var(--text3); padding: 5px 7px;
+    background: rgba(255,217,61,.05); border: 1px dashed rgba(255,217,61,.25);
+    border-radius: 6px; margin-bottom: 8px; line-height: 1.4;
+  }
+  .step-info strong { color: #ffd93d; }
+
+  /* ── AHK HELPER EXPORT CARD (v3.3) ── */
+  .ahk-card-hint { font-size: 10px; color: var(--text3); margin-bottom: 8px; line-height: 1.45; }
+  .ahk-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <h1>⌨️ Macro Keypad Configurator</h1>
+    <p>6-Key Pad + Knob Encoder — MINI KeyBoard · v3.3.0 · Windows · Mouse-aware macros</p>
+  </div>
+</div>
+
+<!-- ══ LIVE DETECTION BAR ══ -->
+<div class="detect-bar">
+  <div class="detect-toggle" id="detect-toggle" onclick="toggleDetect()">
+    <div class="rec-dot" id="rec-dot"></div>
+    <span id="detect-label">Live Detection OFF</span>
+  </div>
+
+  <button class="hid-btn" id="hid-btn" onclick="connectHID()" title="Direct USB HID connection (Chrome/Edge only)">
+    🔌 Connect WebHID
+  </button>
+
+  <div class="detect-log">
+    <span class="detect-log-label">Last input:</span>
+    <span id="log-pills"><span class="no-input-msg">press a key on your pad…</span></span>
+  </div>
+
+  <div style="font-size:11px; color:var(--text3);" id="detect-hint"></div>
+</div>
+
+<!-- PROFILE BAR (rebuilt by Block 2) -->
+<div class="profile-bar" id="profile-bar">
+  <!-- filled by rebuildTopBar() -->
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div>
+    <div class="device-card">
+      <div class="device-card-header" onclick="toggleLayoutCard()">
+        <div class="device-card-title" style="margin-bottom:0;">Device Layout — click a key to configure it &nbsp;·&nbsp; enable Live Detection above to see key presses</div>
+        <span class="collapse-chevron open" id="layout-chevron">▼</span>
+      </div>
+
+      <div class="device-card-body" id="layout-body">
+      <div class="device-layout-inner">
+      <div class="device-shell">
+        <!-- 6 KEYCAPS -->
+        <div class="keys-section">
+          <div class="keys-row">
+            <div class="keycap" id="cap-K1" onclick="selectKey('K1')">
+              <span class="key-id">K1</span>
+              <span class="key-label empty" id="lbl-K1">—</span>
+              <span class="key-raw" id="raw-K1"></span>
+            </div>
+            <div class="keycap" id="cap-K2" onclick="selectKey('K2')">
+              <span class="key-id">K2</span>
+              <span class="key-label empty" id="lbl-K2">—</span>
+              <span class="key-raw" id="raw-K2"></span>
+            </div>
+            <div class="keycap" id="cap-K3" onclick="selectKey('K3')">
+              <span class="key-id">K3</span>
+              <span class="key-label empty" id="lbl-K3">—</span>
+              <span class="key-raw" id="raw-K3"></span>
+            </div>
+          </div>
+          <div class="keys-row">
+            <div class="keycap" id="cap-K4" onclick="selectKey('K4')">
+              <span class="key-id">K4</span>
+              <span class="key-label empty" id="lbl-K4">—</span>
+              <span class="key-raw" id="raw-K4"></span>
+            </div>
+            <div class="keycap" id="cap-K5" onclick="selectKey('K5')">
+              <span class="key-id">K5</span>
+              <span class="key-label empty" id="lbl-K5">—</span>
+              <span class="key-raw" id="raw-K5"></span>
+            </div>
+            <div class="keycap" id="cap-K6" onclick="selectKey('K6')">
+              <span class="key-id">K6</span>
+              <span class="key-label empty" id="lbl-K6">—</span>
+              <span class="key-raw" id="raw-K6"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- KNOB -->
+        <div class="knob-section">
+          <div class="knob-label-top">Knob</div>
+          <div class="knob-body" id="cap-knob-click" onclick="selectKey('knob-click')">
+            <span class="knob-click-badge">PRESS</span>
+          </div>
+          <div class="knob-assigned-label" id="lbl-knob-click">unassigned</div>
+          <div class="knob-turns">
+            <div class="knob-turn-btn" id="cap-knob-left" onclick="selectKey('knob-left')">
+              <span class="knob-turn-icon">◀</span>
+              <span class="knob-turn-label">CCW</span>
+              <span class="knob-turn-val" id="lbl-knob-left">—</span>
+            </div>
+            <div style="font-size:10px; color:var(--text3);">turn</div>
+            <div class="knob-turn-btn" id="cap-knob-right" onclick="selectKey('knob-right')">
+              <span class="knob-turn-icon">▶</span>
+              <span class="knob-turn-label">CW</span>
+              <span class="knob-turn-val" id="lbl-knob-right">—</span>
+            </div>
+          </div>
+        </div>
+      </div><!-- /device-shell -->
+
+      <!-- SUMMARY -->
+      <div class="summary-area">
+        <div class="summary-title">Layer <span id="sum-layer-num">1</span> — Assignments</div>
+        <div class="summary-grid" id="summary-grid">
+          <div class="no-sel">No keys configured — click a key above or ⚡ Load Preset</div>
+        </div>
+      </div>
+      </div><!-- /device-layout-inner -->
+      </div><!-- /device-card-body -->
+    </div><!-- /device-card -->
+
+    <!-- KEY DETECTION MAP -->
+    <div class="device-card" style="margin-top:14px;">
+      <div class="device-card-header" onclick="toggleKeyMapCard()">
+        <div class="device-card-title" style="margin-bottom:0;">Key Map &amp; Assignments</div>
+        <span class="collapse-chevron open" id="keymap-chevron">▼</span>
+      </div>
+      <div class="device-card-body" id="keymap-body">
+      <p style="font-size:11px; color:var(--text2); margin-bottom:10px;">
+        Capture a physical keyboard-style code if available, then review its assignment and firmware packet side by side. Media actions may not show in browser live detection.
+      </p>
+      <table class="map-table">
+        <thead><tr><th>Pad Key</th><th>Detected Code</th><th>Assignment</th><th>Firmware</th><th>Status</th></tr></thead>
+        <tbody id="map-tbody">
+          <tr><td>K1</td><td><span class="map-code" id="mc-K1">—</span></td><td id="ms-K1"><span class="map-status-dot dot-empty"></span>Unknown</td></tr>
+          <tr><td>K2</td><td><span class="map-code" id="mc-K2">—</span></td><td id="ms-K2"><span class="map-status-dot dot-empty"></span>Unknown</td></tr>
+          <tr><td>K3</td><td><span class="map-code" id="mc-K3">—</span></td><td id="ms-K3"><span class="map-status-dot dot-empty"></span>Unknown</td></tr>
+          <tr><td>K4</td><td><span class="map-code" id="mc-K4">—</span></td><td id="ms-K4"><span class="map-status-dot dot-empty"></span>Unknown</td></tr>
+          <tr><td>K5</td><td><span class="map-code" id="mc-K5">—</span></td><td id="ms-K5"><span class="map-status-dot dot-empty"></span>Unknown</td></tr>
+          <tr><td>K6</td><td><span class="map-code" id="mc-K6">—</span></td><td id="ms-K6"><span class="map-status-dot dot-empty"></span>Unknown</td></tr>
+          <tr><td>Knob CCW</td><td><span class="map-code" id="mc-knob-left">—</span></td><td id="ms-knob-left"><span class="map-status-dot dot-empty"></span>Unknown</td></tr>
+          <tr><td>Knob CW</td><td><span class="map-code" id="mc-knob-right">—</span></td><td id="ms-knob-right"><span class="map-status-dot dot-empty"></span>Unknown</td></tr>
+          <tr><td>Knob Press</td><td><span class="map-code" id="mc-knob-click">—</span></td><td id="ms-knob-click"><span class="map-status-dot dot-empty"></span>Unknown</td></tr>
+        </tbody>
+      </table>
+      </div><!-- /keymap-body -->
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="card" id="editor-card">
+      <div class="card-title">Key Editor</div>
+      <div id="editor-body"><div class="no-sel">👆 Click any key or knob control to configure it</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Export</div>
+      <div class="export-row">
+        <button class="exp-btn" onclick="copyConfig()">📋 Copy Summary</button>
+        <button class="exp-btn" onclick="downloadJSON()">💾 Download JSON</button>
+      </div>
+      <div class="export-row" style="margin-top:7px;">
+        <button class="exp-btn" onclick="document.getElementById('import-file').click()">📂 Import JSON</button>
+      </div>
+      <button class="exp-btn" onclick="resetAllData()" style="width:100%; margin-top:7px;">🗑 Reset All</button>
+      <input type="file" id="import-file" accept="application/json" style="display:none;" onchange="importJSONFile(event)">
+      <div class="exp-msg" id="exp-msg">✓ Copied to clipboard!</div>
+    </div>
+
+    <!-- ══ MACRO HELPER (v3.3) ══ -->
+    <div class="card" id="ahk-card">
+      <div class="card-title">🖱 Macro Helper (AHK)</div>
+      <div class="ahk-card-hint">
+        Mouse clicks and wheel events can't be emitted by the dongle directly,
+        so this app generates an <strong>AutoHotkey v2</strong> script that
+        listens for hidden trigger combos (Ctrl+Alt+Shift+F13…F21) and plays
+        back the macro steps you defined. Install AHK v2, run the .ahk file,
+        keep it running while you use the keypad.
+      </div>
+      <div class="ahk-row">
+        <button class="exp-btn" onclick="downloadAHK()" style="flex:1;">💾 Download .ahk</button>
+        <button class="exp-btn" onclick="previewAHK()" style="flex:1;">👁 Preview Script</button>
+      </div>
+      <div id="ahk-stats" style="font-size:10px;color:var(--text3);"></div>
+    </div>
+
+    <!-- ══ SEND TO DONGLE ══ -->
+    <div class="card">
+      <div class="card-title">Send to Dongle</div>
+      <div class="dongle-status">
+        <div class="dongle-dot" id="dongle-dot"></div>
+        <span id="dongle-status-txt">Not connected — use Connect WebHID above</span>
+      </div>
+      <button class="dongle-btn primary" onclick="sendCurrentLayer()" id="btn-send-layer">
+        🔄 Send New Config to Active Layer
+      </button>
+      <button class="dongle-btn" onclick="sendAllLayers()">
+        🔄 Send All Layers
+      </button>
+      <button class="dongle-btn" onclick="cycleHIDDevice()">
+        🔁 Cycle Selected HID Device
+      </button>
+      <button class="dongle-btn" onclick="reopenHIDDevice()">
+        ♻️ Reopen Current HID Device
+      </button>
+      <button class="dongle-btn" onclick="diagnosticWriteLayer1()" style="font-size:10px;">
+        🧪 Diagnostic Write Layer 1
+      </button>
+      <button class="dongle-btn" onclick="scanHIDDevice()" style="font-size:10px;opacity:.8;">
+        🔍 Scan HID Descriptor
+      </button>
+      <div class="dongle-log" id="dongle-log">
+        <div style="color:var(--text3);">Connect WebHID (button above) → configure keys → click Send.</div>
+        <div style="color:var(--text3); margin-top:4px;">Chrome / Edge only. Use Scan HID Descriptor after connecting to diagnose issues.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRESET OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="preset-box">
+    <h2>⚡ Load Preset Profile</h2>
+    <div class="preset-list">
+      <div class="preset-item" onclick="loadPreset('media')"><h4>🎵 Media Control</h4><p>Play/Pause, Skip, Vol Up/Down, Mute · Knob = Volume</p></div>
+      <div class="preset-item" onclick="loadPreset('productivity')"><h4>⚡ Productivity</h4><p>Undo, Redo, Copy, Paste, Save, Screenshot · Knob = Undo/Redo</p></div>
+      <div class="preset-item" onclick="loadPreset('photoshop')"><h4>🎨 Photoshop / Creative</h4><p>Undo, Zoom, Brush Size, Save · Knob = Zoom</p></div>
+      <div class="preset-item" onclick="loadPreset('browser')"><h4>🌐 Browser Navigation</h4><p>New Tab, Close, Refresh, Back, Forward, Dev Tools · Knob = Back/Fwd</p></div>
+      <div class="preset-item" onclick="loadPreset('gaming')"><h4>🎮 Gaming Macros</h4><p>Push-to-Talk, Mute Mic, Screenshot, Clip · Knob = Volume</p></div>
+      <div class="preset-item" onclick="loadPreset('excel')"><h4>📊 MS Excel</h4><p>Undo, Redo, AutoSum, Format, Filter, Fill Down · Knob = Scroll Left/Right</p></div>
+    </div>
+    <button class="overlay-close" onclick="document.getElementById('overlay').classList.remove('open')">Cancel</button>
+  </div>
+</div>
+
+<!-- Send feedback overlay -->
+<div class="send-overlay" id="send-overlay">
+  <div class="send-overlay-text" id="send-overlay-text">Sending…</div>
+  <div class="send-progress-track"><div class="send-progress-fill" id="send-progress-fill"></div></div>
+  <div class="send-overlay-sub" id="send-overlay-sub">Writing config to device</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  COLLAPSIBLE LAYOUT CARD
+// ══════════════════════════════════════════════
+function toggleLayoutCard() {
+  const body    = document.getElementById('layout-body');
+  const chevron = document.getElementById('layout-chevron');
+  const isOpen  = !body.classList.contains('collapsed');
+  body.classList.toggle('collapsed', isOpen);
+  chevron.classList.toggle('open', !isOpen);
+}
+
+function toggleKeyMapCard() {
+  const body    = document.getElementById('keymap-body');
+  const chevron = document.getElementById('keymap-chevron');
+  const isOpen  = !body.classList.contains('collapsed');
+  body.classList.toggle('collapsed', isOpen);
+  chevron.classList.toggle('open', !isOpen);
+}
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let currentLayer  = 1;
+let selectedId    = null;
+let detectMode    = false;
+let captureMode   = false;   // waiting to capture next keypress for selectedId
+let hidDevice     = null;
+
+/// config[keyId] = { type, label, shortcut:{mods,key}, media, macro, delay, app }
+const config = { 1: {} };
+
+const KEY_IDS  = ['K1','K2','K3','K4','K5','K6'];
+const KNOB_IDS = ['knob-left','knob-click','knob-right'];
+const ALL_IDS  = [...KEY_IDS, ...KNOB_IDS];
+
+// Maps detected key codes → pad key IDs (populated at runtime via capture)
+// Keyed by event.code e.g. "F1", "F2" …
+const codeToKeyId = {};
+const STORAGE_KEY = 'macro-keypad-standalone-v1';
+
+// Preset-to-theme mapping (applied when a preset is loaded)
+const PRESET_THEMES = {
+  media:'preset-media', productivity:'preset-productivity',
+  photoshop:'preset-photoshop', browser:'preset-browser',
+  gaming:'preset-gaming', excel:'preset-excel'
+};
+function applyPresetTheme(name) {
+  document.body.className = document.body.className.replace(/\bpreset-\S+/g, '').trim();
+  if (name && PRESET_THEMES[name]) document.body.classList.add(PRESET_THEMES[name]);
+}
+
+// ══════════════════════════════════════════════
+//  MEDIA / APP DEFS
+// ══════════════════════════════════════════════
+const MEDIA = [
+  {id:'play_pause',icon:'⏯',label:'Play/Pause'},{id:'stop',icon:'⏹',label:'Stop'},
+  {id:'prev',icon:'⏮',label:'Prev'},{id:'next',icon:'⏭',label:'Next'},
+  {id:'vol_up',icon:'🔊',label:'Vol Up'},{id:'vol_down',icon:'🔉',label:'Vol Down'},
+  {id:'mute',icon:'🔇',label:'Mute'},{id:'bright_up',icon:'☀️',label:'Bright+'},
+  {id:'bright_down',icon:'🌤',label:'Bright–'},
+];
+const APPS = [
+  {id:'screenshot',icon:'📷',label:'Screenshot',shortcut:{mods:['Win','Shift'],key:'S'}},
+  {id:'task_mgr',icon:'📊',label:'Task Mgr',shortcut:{mods:['Ctrl','Shift'],key:'Esc'}},
+  {id:'explorer',icon:'📁',label:'Explorer',shortcut:{mods:['Win'],key:'E'}},
+  {id:'lock',icon:'🔒',label:'Lock PC',shortcut:{mods:['Win'],key:'L'}},
+  {id:'taskview',icon:'🖥',label:'Task View',shortcut:{mods:['Win'],key:'Tab'}},
+  {id:'search',icon:'🔍',label:'Search',shortcut:{mods:['Win'],key:'S'}},
+];
+const PRESETS = {
+  media:       {K1:{type:'media',label:'Play/Pause',media:'play_pause'},K2:{type:'media',label:'Vol Up',media:'vol_up'},K3:{type:'media',label:'Mute',media:'mute'},K4:{type:'media',label:'Prev',media:'prev'},K5:{type:'media',label:'Vol Down',media:'vol_down'},K6:{type:'media',label:'Next',media:'next'},'knob-left':{type:'media',label:'Vol –',media:'vol_down'},'knob-right':{type:'media',label:'Vol +',media:'vol_up'},'knob-click':{type:'media',label:'Mute',media:'mute'}},
+  productivity:{K1:{type:'shortcut',label:'Undo',shortcut:{mods:['Ctrl'],key:'Z'}},K2:{type:'shortcut',label:'Redo',shortcut:{mods:['Ctrl'],key:'Y'}},K3:{type:'shortcut',label:'Copy',shortcut:{mods:['Ctrl'],key:'C'}},K4:{type:'shortcut',label:'Paste',shortcut:{mods:['Ctrl'],key:'V'}},K5:{type:'shortcut',label:'Save',shortcut:{mods:['Ctrl'],key:'S'}},K6:{type:'shortcut',label:'Snip',shortcut:{mods:['Win','Shift'],key:'S'}},'knob-left':{type:'shortcut',label:'Undo',shortcut:{mods:['Ctrl'],key:'Z'}},'knob-right':{type:'shortcut',label:'Redo',shortcut:{mods:['Ctrl'],key:'Y'}},'knob-click':{type:'shortcut',label:'Sel All',shortcut:{mods:['Ctrl'],key:'A'}}},
+  photoshop:   {K1:{type:'shortcut',label:'Undo',shortcut:{mods:['Ctrl'],key:'Z'}},K2:{type:'shortcut',label:'Zoom In',shortcut:{mods:['Ctrl'],key:'='}},K3:{type:'shortcut',label:'Zoom Out',shortcut:{mods:['Ctrl'],key:'-'}},K4:{type:'shortcut',label:'Brush+',shortcut:{mods:[],key:']'}},K5:{type:'shortcut',label:'Brush–',shortcut:{mods:[],key:'['}},K6:{type:'shortcut',label:'Save',shortcut:{mods:['Ctrl'],key:'S'}},'knob-left':{type:'shortcut',label:'Zoom Out',shortcut:{mods:['Ctrl'],key:'-'}},'knob-right':{type:'shortcut',label:'Zoom In',shortcut:{mods:['Ctrl'],key:'='}},'knob-click':{type:'shortcut',label:'Fit View',shortcut:{mods:['Ctrl'],key:'0'}}},
+  browser:     {K1:{type:'shortcut',label:'New Tab',shortcut:{mods:['Ctrl'],key:'T'}},K2:{type:'shortcut',label:'Close Tab',shortcut:{mods:['Ctrl'],key:'W'}},K3:{type:'shortcut',label:'Refresh',shortcut:{mods:['Ctrl'],key:'R'}},K4:{type:'shortcut',label:'Back',shortcut:{mods:['Alt'],key:'Left'}},K5:{type:'shortcut',label:'Forward',shortcut:{mods:['Alt'],key:'Right'}},K6:{type:'shortcut',label:'Dev Tools',shortcut:{mods:[],key:'F12'}},'knob-left':{type:'shortcut',label:'Back',shortcut:{mods:['Alt'],key:'Left'}},'knob-right':{type:'shortcut',label:'Forward',shortcut:{mods:['Alt'],key:'Right'}},'knob-click':{type:'shortcut',label:'Refresh',shortcut:{mods:['Ctrl'],key:'R'}}},
+  gaming:      {K1:{type:'shortcut',label:'PTT',shortcut:{mods:[],key:'CapsLock'}},K2:{type:'media',label:'Mute Mic',media:'mute'},K3:{type:'shortcut',label:'Screenshot',shortcut:{mods:[],key:'F12'}},K4:{type:'shortcut',label:'NV Clip',shortcut:{mods:['Alt'],key:'F10'}},K5:{type:'shortcut',label:'NV Share',shortcut:{mods:['Alt'],key:'Z'}},K6:{type:'shortcut',label:'Scoreboard',shortcut:{mods:[],key:'Tab'}},'knob-left':{type:'media',label:'Vol –',media:'vol_down'},'knob-right':{type:'media',label:'Vol +',media:'vol_up'},'knob-click':{type:'media',label:'Mute',media:'mute'}},
+  excel:       {K1:{type:'shortcut',label:'Undo',shortcut:{mods:['Ctrl'],key:'Z'}},K2:{type:'shortcut',label:'Redo',shortcut:{mods:['Ctrl'],key:'Y'}},K3:{type:'shortcut',label:'AutoSum',shortcut:{mods:['Alt'],key:'='}},K4:{type:'shortcut',label:'Format',shortcut:{mods:['Ctrl'],key:'1'}},K5:{type:'shortcut',label:'Filter',shortcut:{mods:['Ctrl','Shift'],key:'L'}},K6:{type:'shortcut',label:'Fill Down',shortcut:{mods:['Ctrl'],key:'D'}},'knob-left':{type:'shortcut',label:'Scroll ←',shortcut:{mods:['Alt'],key:'Page Down'}},'knob-right':{type:'shortcut',label:'Scroll →',shortcut:{mods:['Alt'],key:'Page Up'}},'knob-click':{type:'shortcut',label:'Sel All',shortcut:{mods:['Ctrl'],key:'A'}}},
+};
+
+// ══════════════════════════════════════════════
+//  LIVE DETECTION
+// ══════════════════════════════════════════════
+function toggleDetect() {
+  detectMode = !detectMode;
+  const toggle = document.getElementById('detect-toggle');
+  const label  = document.getElementById('detect-label');
+  toggle.classList.toggle('active', detectMode);
+  label.textContent = detectMode ? 'Live Detection ON' : 'Live Detection OFF';
+  document.getElementById('detect-hint').textContent =
+    detectMode ? 'Press keys on your pad — they will light up here' : '';
+  if (!detectMode) captureMode = false;
+}
+
+// Keyboard events — fires for standard keyboard HID devices
+window.addEventListener('keydown', handleKeyDown);
+
+function handleKeyDown(e) {
+  // Ignore modifier-only presses and standard typing keys when not in detect mode
+  if (!detectMode && !captureMode) return;
+  if (['Control','Shift','Alt','Meta','OS'].includes(e.key)) return;
+
+  // Don't intercept if user is typing in an input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+  if (captureMode) e.preventDefault();
+
+  const code = e.code;   // e.g. "F1", "F2", "KeyA", "Volume_Up"
+  const key  = e.key;    // e.g. "F1", "a", "ArrowLeft"
+
+  // Show in log
+  showInLog(code);
+
+  if (captureMode && selectedId) {
+    setPhysicalMapping(selectedId, code);
+    captureMode = false;
+    refreshDevice();
+    renderEditor();
+    renderSummary();
+    persistState();
+    return;
+  }
+
+  if (detectMode) {
+    // ── DETECT MODE: flash matching pad key if known ──
+    const padKey = codeToKeyId[code];
+    if (padKey) {
+      flashPadKey(padKey);
+    } else {
+      // Auto-try to match by name (F1→K1, F2→K2 … common default mapping)
+      const autoMatch = autoMatchCode(code, key);
+      if (autoMatch) flashPadKey(autoMatch);
+    }
+  }
+}
+
+// Try to auto-match common default assignments before user uses capture mode
+function autoMatchCode(code, key) {
+  const fKeys = {F1:'K1',F2:'K2',F3:'K3',F4:'K4',F5:'K5',F6:'K6'};
+  if (fKeys[key]) {
+    if (!codeToKeyId[code]) {
+      setPhysicalMapping(fKeys[key], code, false);
+      persistState();
+    }
+    return fKeys[key];
+  }
+  return null;
+}
+
+
+function getDetectedCodeForSlot(kid) {
+  return Object.entries(codeToKeyId).find(([code, slot]) => slot === kid)?.[0] || '';
+}
+
+function setPhysicalMapping(kid, code, refreshTable = true) {
+  // Remove any old mapping owned by this slot
+  Object.entries(codeToKeyId).forEach(([existingCode, slot]) => {
+    if (slot === kid && existingCode !== code) delete codeToKeyId[existingCode];
+  });
+  // This code can only belong to one slot
+  if (codeToKeyId[code] && codeToKeyId[code] !== kid) delete codeToKeyId[code];
+  codeToKeyId[code] = kid;
+  if (refreshTable) updateDetectedCodeTable(kid, code);
+  else updateDetectedCodeTable(kid, code);
+}
+
+function clearPhysicalMapping() {
+  if (!selectedId) return;
+  let removed = false;
+  Object.entries(codeToKeyId).forEach(([code, slot]) => {
+    if (slot === selectedId) {
+      delete codeToKeyId[code];
+      removed = true;
+    }
+  });
+  const mc = document.getElementById('mc-' + selectedId);
+  const ms = document.getElementById('ms-' + selectedId);
+  const raw = document.getElementById('raw-' + selectedId);
+  if (mc) mc.textContent = '—';
+  if (ms) ms.innerHTML = '<span class="map-status-dot dot-empty"></span>Unknown';
+  if (raw) raw.textContent = '';
+  if (removed) {
+    persistState();
+    refreshDevice();
+    renderEditor();
+  }
+}
+
+// persistState: delegates to Block 2's version once it installs itself via window.persistState.
+// Block 2 overrides window.persistState to use the profile storage system (PROFILE_STORAGE_KEY).
+// Fallback to the legacy STORAGE_KEY only during the brief window before Block 2 loads.
+function persistState() {
+  if (window.persistState && window.persistState !== persistState) {
+    window.persistState(); return;
+  }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ config, codeToKeyId }));
+  } catch (_) {}
+}
+
+// loadPersistedState: Block 2 fully overrides this. The Block 1 version is kept as a
+// fallback only; the real init call happens inside Block 2's IIFE.
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    config[1] = data.config?.[1] || data.config?.['1'] || {};
+    Object.keys(codeToKeyId).forEach(k => delete codeToKeyId[k]);
+    Object.entries(data.codeToKeyId || {}).forEach(([code, slot]) => {
+      codeToKeyId[code] = slot;
+    });
+  } catch (_) {}
+}
+
+function exportStateObject() {
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    config,
+    codeToKeyId
+  };
+}
+
+
+function importJSONFile(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      applyImportedState(data);
+      persistState();
+      refreshDevice();
+      renderSummary();
+      renderEditor();
+      flashExportMsg('✓ Imported');
+    } catch (err) {
+      alert('Import failed: ' + err.message);
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function applyImportedState(data) {
+  const importedConfig = data.config || data;
+  config[1] = importedConfig?.[1] || importedConfig?.['1'] || {};
+  Object.keys(codeToKeyId).forEach(k => delete codeToKeyId[k]);
+  Object.entries(data.codeToKeyId || {}).forEach(([code, slot]) => {
+    codeToKeyId[code] = slot;
+  });
+  ALL_IDS.forEach(kid => {
+    const raw = document.getElementById('raw-' + kid);
+    const mc = document.getElementById('mc-' + kid);
+    const ms = document.getElementById('ms-' + kid);
+    const code = getDetectedCodeForSlot(kid);
+    if (raw) raw.textContent = code;
+    if (mc) mc.textContent = code || '—';
+    if (ms) {
+      const assigned = !!config[currentLayer][kid];
+      ms.innerHTML = code
+        ? `<span class="map-status-dot ${assigned?'dot-assigned':'dot-detected'}"></span>${assigned?'Assigned':'Detected'}`
+        : '<span class="map-status-dot dot-empty"></span>Unknown';
+    }
+  });
+}
+
+function resetAllData() {
+  if (!confirm('Reset all mappings and saved local data?')) return;
+  config[1] = {};
+  Object.keys(codeToKeyId).forEach(k => delete codeToKeyId[k]);
+  selectedId = null;
+  captureMode = false;
+  try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+  ALL_IDS.forEach(kid => {
+    const raw = document.getElementById('raw-' + kid);
+    const mc = document.getElementById('mc-' + kid);
+    const ms = document.getElementById('ms-' + kid);
+    if (raw) raw.textContent = '';
+    if (mc) mc.textContent = '—';
+    if (ms) ms.innerHTML = '<span class="map-status-dot dot-empty"></span>Unknown';
+  });
+  refreshDevice();
+  renderSummary();
+  renderEditor();
+  flashExportMsg('✓ Reset complete');
+}
+
+function flashExportMsg(text) {
+  const msg = document.getElementById('exp-msg');
+  if (!msg) return;
+  msg.textContent = text;
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2200);
+}
+
+function showInLog(code) {
+  const pills = document.getElementById('log-pills');
+  const pill = document.createElement('span');
+  pill.className = 'key-pill';
+  pill.textContent = code;
+  // Keep only last 5
+  while (pills.children.length >= 5) pills.removeChild(pills.firstChild);
+  // Remove "no input" msg
+  const noMsg = pills.querySelector('.no-input-msg');
+  if (noMsg) noMsg.remove();
+  pills.appendChild(pill);
+  // Auto-fade
+  setTimeout(() => { if (pill.parentNode) pill.style.opacity = '0.4'; }, 2500);
+}
+
+function flashPadKey(kid) {
+  const el = kid.startsWith('knob-click') ? document.getElementById('cap-knob-click')
+           : kid.startsWith('knob-')       ? document.getElementById('cap-' + kid)
+           : document.getElementById('cap-' + kid);
+  if (!el) return;
+  el.classList.add('pressed');
+  setTimeout(() => el.classList.remove('pressed'), 180);
+}
+
+function updateDetectedCodeTable(kid, code) {
+  const mc = document.getElementById('mc-' + kid);
+  const ms = document.getElementById('ms-' + kid);
+  if (mc) mc.textContent = code;
+  if (ms) {
+    const isAssigned = !!config[currentLayer][kid];
+    ms.innerHTML = `<span class="map-status-dot ${isAssigned?'dot-assigned':'dot-detected'}"></span>${isAssigned?'Assigned':'Detected'}`;
+  }
+  // Also update the tiny code badge on the keycap itself
+  const rawEl = document.getElementById('raw-' + kid);
+  if (rawEl && code) rawEl.textContent = code;
+}
+
+// ══════════════════════════════════════════════
+//  WEBHID
+// ══════════════════════════════════════════════
+
+let hidAuthorizedDevices = [];
+let hidDeviceIndex = -1;
+let _lastInputReports = [];
+
+async function listAuthorizedHIDDevices() {
+  if (!navigator.hid) return [];
+  const devs = await navigator.hid.getDevices();
+  return devs.filter(d => d.vendorId === 0x1189 && d.productId === 0x8890);
+}
+
+function describeCollections(device) {
+  const cols = device.collections || [];
+  if (!cols.length) return 'no collections exposed';
+  return cols.map((col, i) => {
+    const up = (col.usagePage ?? 0).toString(16).padStart(4,'0');
+    const u  = (col.usage ?? 0).toString(16).padStart(4,'0');
+    const outs = (col.outputReports || []).map(r => '0x' + r.reportId.toString(16).padStart(2,'0')).join(',');
+    const ins  = (col.inputReports || []).map(r => '0x' + r.reportId.toString(16).padStart(2,'0')).join(',');
+    return `[${i}] up=0x${up} u=0x${u} out=${outs||'-'} in=${ins||'-'}`;
+  }).join(' | ');
+}
+
+async function attachHIDDevice(device, indexHint = -1) {
+  if (!device) throw new Error('No HID device supplied');
+  if (hidDevice && hidDevice !== device && hidDevice.opened) {
+    try { await hidDevice.close(); } catch(e) {}
+  }
+  hidDevice = device;
+  hidDeviceIndex = indexHint;
+  _workingRid = 0x03;
+  _lastInputReports = [];
+  if (!hidDevice.opened) await hidDevice.open();
+
+  if (!hidDevice.__oai_listener_attached) {
+    hidDevice.addEventListener('inputreport', ({ reportId, data }) => {
+      const bytes = [...new Uint8Array(data.buffer)].map(b => b.toString(16).padStart(2,'0')).join(' ');
+      _lastInputReports.push({ ts: Date.now(), reportId, bytes });
+      while (_lastInputReports.length > 30) _lastInputReports.shift();
+      dongleLog(`← rpt 0x${reportId.toString(16).padStart(2,'0')}  ${bytes}`, 'var(--accent2)');
+      if (detectMode) showInLog(`HID:${bytes}`);
+    });
+    hidDevice.__oai_listener_attached = true;
+  }
+
+  const btn = document.getElementById('hid-btn');
+  if (btn) {
+    btn.textContent = `✓ ${hidDevice.productName || 'Device'} connected`;
+    btn.classList.add('connected');
+  }
+  updateDongleStatus();
+  dongleLog(`✓ WebHID connected [${hidDeviceIndex >= 0 ? hidDeviceIndex : '?'}]: ${hidDevice.productName || 'HID device'} · VID 0x${hidDevice.vendorId.toString(16).toUpperCase().padStart(4,'0')} PID 0x${hidDevice.productId.toString(16).toUpperCase().padStart(4,'0')}`, 'var(--accent2)');
+  dongleLog(`   ${describeCollections(hidDevice)}`, 'var(--text3)');
+  return hidDevice;
+}
+
+async function connectHID() {
+  const btn = document.getElementById('hid-btn');
+  if (!navigator.hid) {
+    btn.textContent = '⚠ WebHID not supported';
+    btn.classList.add('unavailable');
+    alert('WebHID is only supported in Chrome or Edge.\n\nOpen this file in Chrome/Edge for USB HID support.\n\nYou can still use keyboard event detection in any browser.');
+    return;
+  }
+  try {
+    const requested = await navigator.hid.requestDevice({ filters: [{ vendorId: 0x1189, productId: 0x8890 }] });
+    const authorized = await listAuthorizedHIDDevices();
+    hidAuthorizedDevices = authorized.length ? authorized : requested;
+    if (!hidAuthorizedDevices.length) return;
+
+    dongleLog(`ℹ Authorized HID interfaces for VID 1189 / PID 8890: ${hidAuthorizedDevices.length}`, 'var(--text2)');
+    hidAuthorizedDevices.forEach((d, i) => {
+      const cols = d.collections?.length ?? 0;
+      dongleLog(`   [${i}] ${d.productName || '?'} · ${cols} collection(s) · opened=${!!d.opened}`, 'var(--text3)');
+    });
+
+    await attachHIDDevice(hidAuthorizedDevices[0], 0);
+  } catch(err) {
+    if (err.name !== 'NotAllowedError') alert('Could not connect: ' + err.message);
+  }
+}
+
+async function cycleHIDDevice() {
+  if (!navigator.hid) return;
+  hidAuthorizedDevices = await listAuthorizedHIDDevices();
+  if (!hidAuthorizedDevices.length) {
+    dongleLog('⚠ No authorized HID devices. Click Connect WebHID first.', 'var(--accent3)');
+    return;
+  }
+  const nextIndex = hidDeviceIndex < 0 ? 0 : (hidDeviceIndex + 1) % hidAuthorizedDevices.length;
+  dongleLog(`↻ Cycling to HID device [${nextIndex}]`, 'var(--accent4)');
+  await attachHIDDevice(hidAuthorizedDevices[nextIndex], nextIndex);
+}
+
+async function reopenHIDDevice() {
+  if (!hidDevice) {
+    dongleLog('⚠ No current HID device. Click Connect WebHID first.', 'var(--accent3)');
+    return;
+  }
+  try {
+    if (hidDevice.opened) await hidDevice.close();
+    await new Promise(r => setTimeout(r, 600));
+    await hidDevice.open();
+    _workingRid = 0x03;
+    updateDongleStatus();
+    dongleLog('♻ Current HID device closed and reopened.', 'var(--accent4)');
+  } catch(err) {
+    dongleLog(`✗ reopen failed: ${err.message}`, 'var(--accent3)');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  LAYER
+// ══════════════════════════════════════════════
+//  LAYER
+// ══════════════════════════════════════════════
+// Single-layer device — setLayer kept as a no-op stub for compatibility
+function setLayer(n) { /* no-op */ }
+
+// ══════════════════════════════════════════════
+//  DEVICE REFRESH
+// ══════════════════════════════════════════════
+const TC = {shortcut:'#6c63ff',media:'#00d4aa',macro:'#ffd93d',app:'#ff6b6b'};
+const LC = {1:'assigned-l1',2:'assigned-l2',3:'assigned-l3',4:'assigned-l4',5:'assigned-l5',
+             6:'assigned-l6',7:'assigned-l7',8:'assigned-l8',9:'assigned-l9',10:'assigned-l10'};
+
+function refreshDevice() {
+  const lc = config[currentLayer];
+  KEY_IDS.forEach(kid => {
+    const cap = document.getElementById('cap-' + kid);
+    const lbl = document.getElementById('lbl-' + kid);
+    const d   = lc[kid];
+    const isCapturing = captureMode && selectedId === kid;
+    const isSelected  = selectedId === kid && !captureMode;
+
+    cap.className = 'keycap'
+      + (isSelected  ? ' selected' : '')
+      + (isCapturing ? ' capturing' : '')
+      + (d && !isCapturing ? ' ' + LC[currentLayer] : '');
+
+    const oldPip = cap.querySelector('.type-pip');
+    if (oldPip) oldPip.remove();
+
+    if (isCapturing) {
+      lbl.textContent = 'Press key…';
+      lbl.className   = 'key-label capture-hint';
+    } else if (d) {
+      lbl.textContent = d.label || autoLabel(d);
+      lbl.className   = 'key-label';
+      const pip = document.createElement('span');
+      pip.className = 'type-pip';
+      pip.style.background = TC[d.type] || '#555';
+      cap.appendChild(pip);
+    } else {
+      lbl.textContent = '—';
+      lbl.className   = 'key-label empty';
+    }
+  });
+
+  // Knob click
+  const kb = document.getElementById('cap-knob-click');
+  kb.className = 'knob-body' + (selectedId === 'knob-click' ? ' selected' : '');
+  const kc = lc['knob-click'];
+  document.getElementById('lbl-knob-click').textContent = kc ? (kc.label || autoLabel(kc)) : 'unassigned';
+
+  // Knob turns
+  ['left','right'].forEach(dir => {
+    const kid = 'knob-' + dir;
+    const btn = document.getElementById('cap-' + kid);
+    const d   = lc[kid];
+    btn.className = 'knob-turn-btn'
+      + (selectedId === kid ? ' selected' : '')
+      + (captureMode && selectedId === kid ? ' capturing' : '')
+      + (d ? ' assigned' : '');
+    const fullLabel = d ? (d.label || autoLabel(d)) : '—';
+    document.getElementById('lbl-' + kid).textContent = fullLabel;
+    // Inject tooltip span for long labels
+    let tip = btn.querySelector('.knob-full-label');
+    if (!tip) { tip = document.createElement('span'); tip.className = 'knob-full-label'; btn.appendChild(tip); }
+    tip.textContent = fullLabel;
+  });
+}
+
+function autoLabel(d) {
+  if (!d) return '—';
+  if (d.type==='shortcut' && d.shortcut) return [...(d.shortcut.mods||[]), d.shortcut.key].filter(Boolean).join('+');
+  if (d.type==='media') { const m=MEDIA.find(x=>x.id===d.media); return m?m.label:d.media||'?'; }
+  if (d.type==='macro') {
+    if (Array.isArray(d.steps) && d.steps.length) return macroStepsLabel(d.steps);
+    if (typeof d.macro === 'string' && d.macro.length) return 'Macro';
+    return 'Empty Macro';
+  }
+  if (d.type==='app')   { const a=APPS.find(x=>x.id===d.app);   return a?a.label:d.app||'?'; }
+  return '?';
+}
+
+// ══════════════════════════════════════════════
+//  SELECTION
+// ══════════════════════════════════════════════
+function selectKey(id) {
+  captureMode = false;
+  selectedId  = id;
+  refreshDevice();
+  renderEditor();
+}
+
+// ══════════════════════════════════════════════
+//  SUMMARY
+// ══════════════════════════════════════════════
+function renderSummary() {
+  const grid = document.getElementById('summary-grid');
+  const lc   = config[currentLayer];
+  const assigned = ALL_IDS.filter(k => lc[k]);
+  if (!assigned.length) {
+    grid.innerHTML = '<div class="no-sel">No keys configured — click a key above or ⚡ Load Preset</div>';
+    return;
+  }
+  const kn = {'knob-left':'Knob ◀ CCW','knob-right':'Knob ▶ CW','knob-click':'Knob ● Press'};
+  grid.innerHTML = assigned.map(k => {
+    const d = lc[k];
+    return `<div class="sum-row" onclick="selectKey('${k}')">
+      <span class="sum-key">${kn[k]||k}</span>
+      <span class="sum-val">${d.label||autoLabel(d)}</span>
+      <span class="sum-type t-${d.type}">${{shortcut:'Key',media:'Media',macro:'Macro',app:'App'}[d.type]||d.type}</span>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+//  EDITOR
+// ══════════════════════════════════════════════
+function renderEditor() {
+  const body = document.getElementById('editor-body');
+  if (!selectedId) {
+    body.innerHTML = '<div class="no-sel">👆 Click any key or knob control to configure it</div>';
+    return;
+  }
+  const d    = config[currentLayer][selectedId] || {};
+  const type = d.type || 'shortcut';
+  const isKnob = selectedId.startsWith('knob-');
+  const KNAMES = {'knob-left':'Knob CCW (Left turn)','knob-right':'Knob CW (Right turn)','knob-click':'Knob Press (Click)'};
+  const badge  = isKnob ? {'knob-left':'◀','knob-right':'▶','knob-click':'●'}[selectedId] : selectedId;
+  const isCapt = captureMode;
+
+  body.innerHTML = `
+    <div class="sel-header">
+      <div class="sel-badge">${badge}</div>
+      <div>
+        <div class="sel-title">${isKnob ? KNAMES[selectedId] : selectedId}</div>
+        <div class="sel-sub">Layer ${currentLayer}</div>
+      </div>
+      <button class="capture-btn${isCapt?' capturing':''}" onclick="toggleCapture()" title="Press a physical key to learn which code this slot sends">
+        ${isCapt ? '⏳ Press key now…' : '⌨ Capture'}
+      </button>
+    </div>
+    ${(()=>{
+      // Show a small notice if the physical code has already been captured for this slot
+      const detectedCode = Object.entries(codeToKeyId).find(([c,k])=>k===selectedId)?.[0];
+      if (detectedCode && !isCapt) {
+        return `<div style="font-size:11px;color:var(--accent2);background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);border-radius:6px;padding:5px 9px;margin-bottom:10px;">
+          ✓ Physical key mapped — sends <strong>${detectedCode}</strong> — assign an action below
+        </div>`;
+      }
+      return '';
+    })()}
+
+    <div class="type-tabs">
+      ${['shortcut','media','macro','app'].map(t=>`
+        <div class="type-tab${type===t?' active':''}" onclick="setType('${t}')">${{shortcut:'⌨ Shortcut',media:'🎵 Media',macro:'📝 Macro',app:'🖥 App'}[t]}</div>
+      `).join('')}
+    </div>
+
+    ${type==='shortcut'?edShortcut(d):''}
+    ${type==='media'   ?edMedia(d)   :''}
+    ${type==='macro'   ?edMacro(d)   :''}
+    ${type==='app'     ?edApp(d)     :''}
+
+    <button class="save-btn" onclick="saveKey()">✓ Save Assignment</button>
+    <button class="clear-btn" onclick="clearPhysicalMapping()">⌫ Clear Physical Mapping</button>
+    <button class="clear-btn" onclick="clearKey()">✕ Clear This Key</button>
+  `;
+}
+
+function toggleCapture() {
+  if (!selectedId) return;
+  captureMode = !captureMode;
+  if (captureMode && !detectMode) toggleDetect(); // auto-enable detect mode
+  refreshDevice();
+  renderEditor();
+}
+
+function edShortcut(d) {
+  const sc = d.shortcut || {mods:[],key:''};
+  return `
+    <div class="form-group">
+      <label class="form-label">Modifier Keys</label>
+      <div class="mod-row">
+        ${['Ctrl','Shift','Alt','Win'].map(m=>`<div class="mod-btn${(sc.mods||[]).includes(m)?' active':''}" onclick="toggleMod('${m}')">${m}</div>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Key</label>
+      <select class="form-select" id="key-sel">${buildKeyOptions(sc.key)}</select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Display Label (optional)</label>
+      <input class="form-input" type="text" id="lbl-input" placeholder="e.g. Undo" value="${d.label||''}">
+    </div>`;
+}
+function edMedia(d) {
+  return `
+    <div class="form-group">
+      <label class="form-label">Media Action</label>
+      <div class="media-grid">
+        ${MEDIA.map(m=>`<div class="media-btn${d.media===m.id?' active':''}" onclick="pickMedia('${m.id}')"><div>${m.icon}</div><div class="media-lbl">${m.label}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Display Label (optional)</label>
+      <input class="form-input" type="text" id="lbl-input" placeholder="e.g. Vol Up" value="${d.label||''}">
+    </div>
+    <input type="hidden" id="media-val" value="${d.media||''}">`;
+}
+// ── v3.3 MACRO STEP MODEL ────────────────────────────────────────────────
+// d.steps = [
+//   { type:'text',  text:'Hello' },
+//   { type:'combo', mods:['Ctrl'], key:'C' },
+//   { type:'click', button:'left'|'right'|'middle'|'doubleLeft', useCoords:false, x:0, y:0 },
+//   { type:'wheel', dir:'up'|'down'|'click', ticks:1 },
+//   { type:'wait',  ms:200 }
+// ]
+// Migration: legacy v3.2 'macro' string is converted to a single Type Text step
+// the first time the slot is opened; the original .macro field is preserved
+// until save so older versions remain readable.
+function ensureSteps(d) {
+  if (!d) return [];
+  if (Array.isArray(d.steps)) return d.steps;
+  if (typeof d.macro === 'string' && d.macro.length) {
+    d.steps = [{ type:'text', text: d.macro }];
+  } else {
+    d.steps = [];
+  }
+  return d.steps;
+}
+
+function newStepOfType(type) {
+  switch(type) {
+    case 'text':  return { type:'text', text:'' };
+    case 'combo': return { type:'combo', mods:[], key:'' };
+    case 'click': return { type:'click', button:'left', useCoords:false, x:0, y:0 };
+    case 'wheel': return { type:'wheel', dir:'down', ticks:1 };
+    case 'wait':  return { type:'wait', ms:200 };
+  }
+  return null;
+}
+
+function describeStep(s) {
+  if (!s) return '?';
+  switch(s.type) {
+    case 'text':  return `Type "${(s.text||'').slice(0,18)}${(s.text||'').length>18?'…':''}"`;
+    case 'combo': return [...(s.mods||[]), s.key].filter(Boolean).join('+') || 'Key combo';
+    case 'click': {
+      const lbl = {left:'Left click',right:'Right click',middle:'Middle click',doubleLeft:'Dbl click'}[s.button] || 'Click';
+      return s.useCoords ? `${lbl} @ ${s.x},${s.y}` : lbl;
+    }
+    case 'wheel': {
+      if (s.dir === 'click') return 'Wheel click';
+      const arrow = s.dir === 'up' ? '↑' : '↓';
+      return `Wheel ${arrow} x${s.ticks||1}`;
+    }
+    case 'wait':  return `Wait ${s.ms||0}ms`;
+  }
+  return '?';
+}
+
+function macroStepsLabel(steps) {
+  if (!steps || !steps.length) return 'Empty macro';
+  if (steps.length === 1) return describeStep(steps[0]);
+  return `${steps.length} steps`;
+}
+
+function addStep(type) {
+  const d = config[currentLayer][selectedId] || {};
+  d.type = 'macro';
+  const steps = ensureSteps(d);
+  const s = newStepOfType(type);
+  if (s) steps.push(s);
+  config[currentLayer][selectedId] = d;
+  renderEditor();
+}
+function removeStep(idx) {
+  const d = config[currentLayer][selectedId] || {};
+  const steps = ensureSteps(d);
+  if (idx >= 0 && idx < steps.length) steps.splice(idx, 1);
+  renderEditor();
+}
+function moveStep(idx, dir) {
+  const d = config[currentLayer][selectedId] || {};
+  const steps = ensureSteps(d);
+  const j = idx + dir;
+  if (idx < 0 || idx >= steps.length || j < 0 || j >= steps.length) return;
+  [steps[idx], steps[j]] = [steps[j], steps[idx]];
+  renderEditor();
+}
+function updateStepField(idx, field, value) {
+  const d = config[currentLayer][selectedId] || {};
+  const steps = ensureSteps(d);
+  if (idx < 0 || idx >= steps.length) return;
+  if (field === 'ticks' || field === 'ms' || field === 'x' || field === 'y') {
+    value = parseInt(value, 10); if (isNaN(value)) value = 0;
+  }
+  if (field === 'useCoords') value = !!value;
+  steps[idx][field] = value;
+}
+function toggleStepMod(idx, mod) {
+  const d = config[currentLayer][selectedId] || {};
+  const steps = ensureSteps(d);
+  if (idx < 0 || idx >= steps.length) return;
+  const s = steps[idx];
+  if (!Array.isArray(s.mods)) s.mods = [];
+  const i = s.mods.indexOf(mod);
+  if (i >= 0) s.mods.splice(i, 1); else s.mods.push(mod);
+  renderEditor();
+}
+
+function escAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderStepRow(s, idx, total) {
+  const num = `<div class="step-num">${idx+1}</div>`;
+  let body = '';
+  if (s.type === 'text') {
+    body = `
+      <div class="step-body-row">
+        <span class="step-type-pill step-type-text">Type</span>
+        <input class="step-input-mini full" type="text" placeholder="text to type"
+               value="${escAttr(s.text)}"
+               oninput="updateStepField(${idx},'text',this.value)">
+      </div>`;
+  } else if (s.type === 'combo') {
+    const mods = s.mods || [];
+    body = `
+      <div class="step-body-row">
+        <span class="step-type-pill step-type-combo">Combo</span>
+        <div class="step-mod-row">
+          ${['Ctrl','Shift','Alt','Win'].map(m=>`<span class="step-mod-btn${mods.includes(m)?' active':''}" onclick="toggleStepMod(${idx},'${m}')">${m}</span>`).join('')}
+        </div>
+        <select class="step-select-mini" onchange="updateStepField(${idx},'key',this.value);renderEditor()">
+          ${buildKeyOptions(s.key||'')}
+        </select>
+      </div>`;
+  } else if (s.type === 'click') {
+    const btn = s.button || 'left';
+    body = `
+      <div class="step-body-row">
+        <span class="step-type-pill step-type-click">Click</span>
+        <select class="step-select-mini" onchange="updateStepField(${idx},'button',this.value);renderEditor()">
+          <option value="left"${btn==='left'?' selected':''}>Left</option>
+          <option value="right"${btn==='right'?' selected':''}>Right</option>
+          <option value="middle"${btn==='middle'?' selected':''}>Middle</option>
+          <option value="doubleLeft"${btn==='doubleLeft'?' selected':''}>Double Left</option>
+        </select>
+        <label style="font-size:10px;color:var(--text3);display:inline-flex;align-items:center;gap:4px;">
+          <input type="checkbox"${s.useCoords?' checked':''} onchange="updateStepField(${idx},'useCoords',this.checked);renderEditor()">
+          fixed&nbsp;XY
+        </label>
+      </div>
+      ${s.useCoords ? `
+      <div class="step-body-row step-coord-row">
+        <label>X <input class="step-input-mini step-input-num" type="number" value="${s.x||0}" oninput="updateStepField(${idx},'x',this.value)"></label>
+        <label>Y <input class="step-input-mini step-input-num" type="number" value="${s.y||0}" oninput="updateStepField(${idx},'y',this.value)"></label>
+        <span style="font-size:9px;color:var(--text3);">screen pixels (top-left origin)</span>
+      </div>` : ''}`;
+  } else if (s.type === 'wheel') {
+    const dir = s.dir || 'down';
+    body = `
+      <div class="step-body-row">
+        <span class="step-type-pill step-type-wheel">Wheel</span>
+        <select class="step-select-mini" onchange="updateStepField(${idx},'dir',this.value);renderEditor()">
+          <option value="up"${dir==='up'?' selected':''}>Up</option>
+          <option value="down"${dir==='down'?' selected':''}>Down</option>
+          <option value="click"${dir==='click'?' selected':''}>Click (middle btn)</option>
+        </select>
+        ${dir !== 'click' ? `
+          <label style="font-size:10px;color:var(--text3);display:inline-flex;align-items:center;gap:4px;">
+            ticks <input class="step-input-mini step-input-num" type="number" min="1" max="50" value="${s.ticks||1}" oninput="updateStepField(${idx},'ticks',this.value)">
+          </label>` : ''}
+      </div>`;
+  } else if (s.type === 'wait') {
+    body = `
+      <div class="step-body-row">
+        <span class="step-type-pill step-type-wait">Wait</span>
+        <input class="step-input-mini step-input-num" type="number" min="0" max="60000" value="${s.ms||0}" oninput="updateStepField(${idx},'ms',this.value)">
+        <span style="font-size:10px;color:var(--text3);">ms</span>
+      </div>`;
+  }
+  const controls = `
+    <div class="step-controls">
+      <button class="step-ctrl-btn" onclick="moveStep(${idx},-1)" ${idx===0?'disabled':''} title="Move up">▲</button>
+      <button class="step-ctrl-btn del" onclick="removeStep(${idx})" title="Remove">✕</button>
+      <button class="step-ctrl-btn" onclick="moveStep(${idx},1)" ${idx===total-1?'disabled':''} title="Move down">▼</button>
+    </div>`;
+  return `<div class="step-row">${num}<div class="step-body">${body}</div>${controls}</div>`;
+}
+
+function edMacro(d) {
+  const steps = ensureSteps(d);
+  const trigger = MACRO_TRIGGERS[selectedId];
+  const triggerLbl = trigger ? `Ctrl+Alt+Shift+${trigger}` : '(unsupported slot)';
+  return `
+    <div class="step-info">
+      Macros are played by a host-side <strong>AutoHotkey helper</strong>. The dongle
+      sends a unique hidden trigger combo (<strong>${triggerLbl}</strong>) for this slot;
+      AHK intercepts it and runs the steps below. Generate the helper from the
+      <strong>Macro Helper (AHK)</strong> card on the right.
+    </div>
+    <div class="form-group">
+      <label class="form-label">Macro Steps</label>
+      <div class="step-toolbar">
+        <div class="step-add-btn" onclick="addStep('text')"><span class="step-add-icon">📝</span><span>Type Text</span></div>
+        <div class="step-add-btn" onclick="addStep('combo')"><span class="step-add-icon">⌨</span><span>Key Combo</span></div>
+        <div class="step-add-btn" onclick="addStep('click')"><span class="step-add-icon">🖱</span><span>Mouse Click</span></div>
+        <div class="step-add-btn" onclick="addStep('wheel')"><span class="step-add-icon">🎡</span><span>Wheel</span></div>
+        <div class="step-add-btn" onclick="addStep('wait')"><span class="step-add-icon">⏱</span><span>Wait</span></div>
+        <div class="step-add-btn" onclick="if(confirm('Clear all steps?')){const d=config[currentLayer][selectedId]||{};d.steps=[];renderEditor();}"><span class="step-add-icon">🗑</span><span>Clear All</span></div>
+      </div>
+      <div class="step-list">
+        ${steps.length ? steps.map((s,i)=>renderStepRow(s,i,steps.length)).join('') : '<div class="step-list-empty">No steps yet — add one above.<br>e.g. Right Click → Right Click → Wait 200ms → Combo Ctrl+C</div>'}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Default delay between steps (ms)</label>
+      <input class="form-input" type="number" id="macro-delay" value="${d.delay||50}" min="0" max="5000"
+             title="Used between each step unless an explicit Wait step is added">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Display Label</label>
+      <input class="form-input" type="text" id="lbl-input" placeholder="e.g. My Macro" value="${escAttr(d.label||'')}">
+    </div>`;
+}
+function edApp(d) {
+  return `
+    <div class="form-group">
+      <label class="form-label">System Shortcut</label>
+      <div class="app-grid">
+        ${APPS.map(a=>`<div class="app-btn${d.app===a.id?' active':''}" onclick="pickApp('${a.id}')"><span>${a.icon}</span><span>${a.label}</span></div>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Display Label (optional)</label>
+      <input class="form-input" type="text" id="lbl-input" value="${d.label||''}">
+    </div>
+    <input type="hidden" id="app-val" value="${d.app||''}">`;
+}
+
+function buildKeyOptions(sel) {
+  const groups = {
+    'Function Keys':['F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'],
+    'Letters':'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),
+    'Numbers':'0123456789'.split(''),
+    'Navigation':['Left','Right','Up','Down','Home','End','Page Up','Page Down','Insert','Delete'],
+    'Special':['Space','Tab','Return','Escape','Backspace','CapsLock','PrtSc'],
+    'Symbols':['`','-','=','[',']','\\',';',"'",'.',',',"/",'`'],
+    'Numpad':['Num0','Num1','Num2','Num3','Num4','Num5','Num6','Num7','Num8','Num9'],
+  };
+  return '<option value="">-- Select key --</option>'+
+    Object.entries(groups).map(([g,keys])=>
+      `<optgroup label="${g}">${keys.map(k=>`<option value="${k}"${k===sel?' selected':''}>${k}</option>`).join('')}</optgroup>`
+    ).join('');
+}
+
+// ══════════════════════════════════════════════
+//  EDITOR INTERACTIONS
+// ══════════════════════════════════════════════
+function setType(t) {
+  const d=config[currentLayer][selectedId]||{};
+  d.type=t; config[currentLayer][selectedId]=d; renderEditor();
+}
+function toggleMod(mod) {
+  const d=config[currentLayer][selectedId]||{};
+  if(!d.shortcut) d.shortcut={mods:[],key:''};
+  const i=d.shortcut.mods.indexOf(mod);
+  if(i>=0) d.shortcut.mods.splice(i,1); else d.shortcut.mods.push(mod);
+  config[currentLayer][selectedId]=d; renderEditor();
+}
+function pickMedia(id) {
+  const d=config[currentLayer][selectedId]||{};
+  d.media=id; d.type='media';
+  const m=MEDIA.find(x=>x.id===id); if(!d.label) d.label=m?m.label:id;
+  config[currentLayer][selectedId]=d;
+  document.getElementById('media-val').value=id;
+  document.querySelectorAll('.media-btn').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick').includes(`'${id}'`)));
+}
+function pickApp(id) {
+  const d=config[currentLayer][selectedId]||{};
+  d.app=id; d.type='app';
+  const a=APPS.find(x=>x.id===id); if(!d.label) d.label=a?a.label:id; if(a) d.shortcut=a.shortcut;
+  config[currentLayer][selectedId]=d;
+  document.getElementById('app-val').value=id;
+  document.querySelectorAll('.app-btn').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick').includes(`'${id}'`)));
+}
+
+function saveKey() {
+  if(!selectedId) return;
+  const d=config[currentLayer][selectedId]||{};
+  const type=d.type||'shortcut';
+  if(type==='shortcut'){const s=document.getElementById('key-sel'); if(!d.shortcut)d.shortcut={mods:[],key:''}; if(s)d.shortcut.key=s.value;}
+  if(type==='media'){const v=document.getElementById('media-val'); if(v)d.media=v.value;}
+  if(type==='macro'){
+    // v3.3: steps are mutated live; just persist remaining fields here
+    ensureSteps(d);
+    const dl=document.getElementById('macro-delay'); if(dl) d.delay=parseInt(dl.value)||50;
+    if (d.steps && d.steps.length) delete d.macro;
+  }
+  if(type==='app'){const v=document.getElementById('app-val'); if(v)d.app=v.value;}
+  const li=document.getElementById('lbl-input');
+  if(li&&li.value.trim()) d.label=li.value.trim(); else if(!d.label) d.label=autoLabel(d);
+  config[currentLayer][selectedId]=d;
+  // Update detect table status
+  updateDetectedCodeTable(selectedId, getDetectedCodeForSlot(selectedId) || document.getElementById('mc-'+selectedId)?.textContent || '');
+  persistState();
+  refreshDevice(); renderSummary();
+  const btn=document.querySelector('.save-btn');
+  if(btn){btn.textContent='✓ Saved!';btn.style.background='#00d4aa';setTimeout(()=>{btn.textContent='✓ Save Assignment';btn.style.background='';},1400);}
+}
+function clearKey() {
+  if(!selectedId) return;
+  delete config[currentLayer][selectedId]; selectedId=null; captureMode=false;
+  persistState();
+  refreshDevice(); renderSummary(); renderEditor();
+}
+
+// ══════════════════════════════════════════════
+//  PRESETS
+// ══════════════════════════════════════════════
+function loadPreset(name) {
+  const p=PRESETS[name]; if(!p) return;
+  config[currentLayer]=JSON.parse(JSON.stringify(p));
+  document.getElementById('overlay').classList.remove('open');
+  selectedId=null; captureMode=false;
+  persistState();
+  refreshDevice(); renderSummary(); renderEditor();
+}
+
+// ══════════════════════════════════════════════
+//  EXPORT
+// ══════════════════════════════════════════════
+function copyConfig() {
+  const kn={'knob-left':'Knob CCW','knob-right':'Knob CW','knob-click':'Knob Press'};
+  let out='=== MACRO KEYPAD CONFIGURATION ===\n\n';
+  ALL_IDS.forEach(k=>{
+    const d=config[1][k]; if(!d) return;
+    out+=`  ${kn[k]||k}: ${d.label||autoLabel(d)} [${d.type}]`;
+    if(d.type==='shortcut'&&d.shortcut) out+=` → ${[...(d.shortcut.mods||[]),d.shortcut.key].filter(Boolean).join('+')}`;
+    if(d.type==='media') out+=` → ${d.media}`;
+    if(d.type==='macro') {
+      if (Array.isArray(d.steps) && d.steps.length) {
+        out += ` → [${d.steps.map(s=>describeStep(s)).join(' · ')}] (trigger: Ctrl+Alt+Shift+${MACRO_TRIGGERS[k]||'?'})`;
+      } else if (typeof d.macro === 'string' && d.macro) {
+        out += ` → "${d.macro}"`;
+      }
+    }
+    out+='\n';
+  });
+  navigator.clipboard.writeText(out).catch(()=>{});
+  flashExportMsg('Copied to clipboard!');
+}
+function downloadJSON() {
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(config,null,2)],{type:'application/json'}));
+  a.download='keypad-config.json'; a.click();
+  flashExportMsg('✓ Download started');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  v3.3 — AHK HELPER GENERATOR
+//  Produces an AutoHotkey v2 script that intercepts the macro trigger
+//  combos (Ctrl+Alt+Shift+F13..F21) emitted by the keypad and plays
+//  back the structured macro steps (text, key combos, mouse clicks,
+//  wheel scrolls, waits).
+// ══════════════════════════════════════════════════════════════════
+const AHK_KEYNAME = {
+  'Return':'Enter','Enter':'Enter','Escape':'Escape','Backspace':'Backspace',
+  'Tab':'Tab','Space':'Space','CapsLock':'CapsLock','PrtSc':'PrintScreen',
+  'Insert':'Insert','Delete':'Delete','Home':'Home','End':'End',
+  'Page Up':'PgUp','Page Down':'PgDn',
+  'Left':'Left','Right':'Right','Up':'Up','Down':'Down',
+  'Num0':'Numpad0','Num1':'Numpad1','Num2':'Numpad2','Num3':'Numpad3',
+  'Num4':'Numpad4','Num5':'Numpad5','Num6':'Numpad6','Num7':'Numpad7',
+  'Num8':'Numpad8','Num9':'Numpad9',
+};
+function ahkKeyName(jsKey) {
+  if (!jsKey) return '';
+  if (AHK_KEYNAME[jsKey]) return AHK_KEYNAME[jsKey];
+  if (/^[A-Z]$/.test(jsKey)) return jsKey.toLowerCase();
+  if (/^F([1-9]|1[0-9]|2[0-4])$/.test(jsKey)) return jsKey;
+  return jsKey;
+}
+const AHK_MOD_PREFIX = { 'Ctrl':'^', 'Shift':'+', 'Alt':'!', 'Win':'#' };
+
+function ahkSendForCombo(mods, key) {
+  if (!key) return '';
+  const prefix = (mods||[]).map(m => AHK_MOD_PREFIX[m] || '').join('');
+  const name = ahkKeyName(key);
+  const wrap = (name.length === 1 && /[a-z0-9]/i.test(name)) ? name : `{${name}}`;
+  return `Send "${prefix}${wrap}"`;
+}
+
+function ahkEscapeText(s) {
+  return String(s == null ? '' : s)
+    .replace(/`/g, '``')
+    .replace(/"/g, '`"')
+    .replace(/\r?\n/g, '`n')
+    .replace(/\t/g, '`t');
+}
+
+function ahkClickFor(s) {
+  const useC = s.useCoords && (s.x || s.y || s.x === 0 || s.y === 0);
+  const x = parseInt(s.x,10)||0, y = parseInt(s.y,10)||0;
+  switch (s.button) {
+    case 'right':      return useC ? `Click "${x} ${y} Right"`  : `Click "Right"`;
+    case 'middle':     return useC ? `Click "${x} ${y} Middle"` : `Click "Middle"`;
+    case 'doubleLeft': return useC ? `Click "${x} ${y} Left 2"` : `Click "Left 2"`;
+    case 'left':
+    default:           return useC ? `Click "${x} ${y} Left"`   : `Click "Left"`;
+  }
+}
+
+function ahkWheelFor(s) {
+  if (s.dir === 'click') return `Click "Middle"`;
+  const ticks = Math.max(1, parseInt(s.ticks,10)||1);
+  if (s.dir === 'up')   return `Click "WheelUp ${ticks}"`;
+  if (s.dir === 'down') return `Click "WheelDown ${ticks}"`;
+  return `; (unknown wheel dir)`;
+}
+
+function ahkLineForStep(s) {
+  switch (s.type) {
+    case 'text':  return `SendText "${ahkEscapeText(s.text||'')}"`;
+    case 'combo': return ahkSendForCombo(s.mods||[], s.key||'');
+    case 'click': return ahkClickFor(s);
+    case 'wheel': return ahkWheelFor(s);
+    case 'wait':  return `Sleep ${Math.max(0, parseInt(s.ms,10)||0)}`;
+  }
+  return '; (unknown step)';
+}
+
+function getMacroSlotsForAHK() {
+  const out = [];
+  const lc = config[currentLayer] || {};
+  ALL_IDS.forEach(kid => {
+    const d = lc[kid];
+    if (!d || d.type !== 'macro') return;
+    const steps = Array.isArray(d.steps)
+      ? d.steps
+      : (typeof d.macro === 'string' && d.macro ? [{type:'text',text:d.macro}] : []);
+    if (!MACRO_TRIGGERS[kid]) return;
+    out.push({ kid, label: d.label || autoLabel(d), steps, delay: d.delay||50 });
+  });
+  return out;
+}
+
+function generateAHKScript() {
+  const slots = getMacroSlotsForAHK();
+  const profileName = (typeof window.currentProfileName === 'string' && window.currentProfileName) ? window.currentProfileName : 'profile';
+  const stamp = new Date().toISOString();
+  const header = `#Requires AutoHotkey v2.0
+#SingleInstance Force
+SendMode "Input"
+SetKeyDelay -1
+CoordMode "Mouse", "Screen"
+
+; ════════════════════════════════════════════════════════════════
+;  Macro Keypad Helper — generated by Macro Keypad Configurator v3.3
+;  Profile : ${profileName}
+;  Created : ${stamp}
+;
+;  HOW IT WORKS
+;  The dongle's firmware can only emit keyboard / consumer-control events,
+;  not mouse events. So macro-typed pad keys are programmed to emit a hidden
+;  trigger combo (Ctrl+Alt+Shift+F13..F21). This script catches each combo
+;  and replays the configured macro steps — including mouse clicks and
+;  wheel scrolls — using AutoHotkey.
+;
+;  USAGE
+;  1. Install AutoHotkey v2 from https://www.autohotkey.com/
+;  2. Double-click this .ahk file. A green "H" tray icon appears.
+;  3. Press a macro-assigned pad key. The configured sequence runs.
+;  4. To stop: right-click the tray icon → Exit.
+; ════════════════════════════════════════════════════════════════
+
+`;
+  if (!slots.length) {
+    return header + `; (No macro-typed slots in profile "${profileName}".)\n; Add a Macro to a key in the configurator and re-export this script.\n`;
+  }
+  const slotLabel = {'knob-left':'Knob CCW','knob-click':'Knob Press','knob-right':'Knob CW'};
+  const body = slots.map(({kid, label, steps, delay}) => {
+    const trig = MACRO_TRIGGERS[kid];
+    const lines = [];
+    lines.push(`; ── ${slotLabel[kid] || kid} — "${(label||'').replace(/"/g,'\\"')}" ──`);
+    lines.push(`^!+${trig}::Macro_${kid.replace(/-/g,'_')}()`);
+    lines.push(`Macro_${kid.replace(/-/g,'_')}() {`);
+    if (!steps.length) {
+      lines.push(`    ; (no steps defined)`);
+    } else {
+      steps.forEach((s, i) => {
+        lines.push(`    ${ahkLineForStep(s)}`);
+        if (i < steps.length - 1) lines.push(`    Sleep ${delay}`);
+      });
+    }
+    lines.push(`}`);
+    return lines.join('\n');
+  }).join('\n\n');
+  return header + body + '\n';
+}
+
+function downloadAHK() {
+  const script = generateAHKScript();
+  const profileName = (typeof window.currentProfileName === 'string' && window.currentProfileName) ? window.currentProfileName : 'profile';
+  const safe = profileName.replace(/[^a-z0-9_-]+/gi, '_');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([script], {type:'text/plain;charset=utf-8'}));
+  a.download = `keypad-macros-${safe}.ahk`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+  flashExportMsg('✓ AHK script downloaded');
+}
+
+function previewAHK() {
+  const script = generateAHKScript();
+  const w = window.open('', '_blank');
+  if (!w) { alert('Pop-up blocked — allow pop-ups to preview, or use Download .ahk instead.'); return; }
+  w.document.write('<!DOCTYPE html><html><head><title>AHK Preview</title>'
+    + '<style>body{font-family:Consolas,monospace;background:#0f0f13;color:#e8e8f0;padding:20px;}pre{white-space:pre-wrap;word-wrap:break-word;line-height:1.45;font-size:13px;}</style>'
+    + '</head><body><pre>' + script.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre></body></html>');
+  w.document.close();
+}
+
+function refreshAHKStats() {
+  const el = document.getElementById('ahk-stats');
+  if (!el) return;
+  const slots = getMacroSlotsForAHK();
+  if (!slots.length) {
+    el.textContent = 'No macro-typed slots in this profile yet.';
+    return;
+  }
+  const totalSteps = slots.reduce((n,s)=>n+s.steps.length, 0);
+  el.textContent = `${slots.length} macro slot${slots.length===1?'':'s'} · ${totalSteps} step${totalSteps===1?'':'s'} total`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  HID WRITE-TO-DONGLE PROTOCOL
+//
+//  Protocol reverse-engineered from MINI KeyBoard.exe (.NET binary):
+//
+//  ┌ Vendor protocol observed from USBPcap captures ──────────────┐
+//  │ All writes go through Report ID 0x03 as 64-byte payloads.   │
+//  │ For each slot, the vendor app sends:                        │
+//  │   1) [A1 01 00 00]                                          │
+//  │   2) [slot 11 01 00 00 00 00]                               │
+//  │   3) [slot 11 01 type mod code 00]                          │
+//  │   4) [AA AA 00 00]                                          │
+//  │ Observed slot IDs (layer 1):                               │
+//  │   K1..K6 = 0x01..0x06                                       │
+//  │   knob-left = 0x0D, knob-click = 0x0E, knob-right = 0x0F    │
+//  └──────────────────────────────────────────────────────────────┘
+
+// Standard HID keyboard usage codes (page 0x07)
+const HID_KEYCODES = {
+  'A':0x04,'B':0x05,'C':0x06,'D':0x07,'E':0x08,'F':0x09,'G':0x0A,'H':0x0B,
+  'I':0x0C,'J':0x0D,'K':0x0E,'L':0x0F,'M':0x10,'N':0x11,'O':0x12,'P':0x13,
+  'Q':0x14,'R':0x15,'S':0x16,'T':0x17,'U':0x18,'V':0x19,'W':0x1A,'X':0x1B,
+  'Y':0x1C,'Z':0x1D,
+  '0':0x27,'1':0x1E,'2':0x1F,'3':0x20,'4':0x21,'5':0x22,
+  '6':0x23,'7':0x24,'8':0x25,'9':0x26,
+  'Return':0x28,'Enter':0x28,'Escape':0x29,'Backspace':0x2A,'Tab':0x2B,'Space':0x2C,
+  '-':0x2D,'=':0x2E,'[':0x2F,']':0x30,'\\':0x31,';':0x33,"'":0x34,
+  '`':0x35,',':0x36,'.':0x37,'/':0x38,'CapsLock':0x39,
+  'F1':0x3A,'F2':0x3B,'F3':0x3C,'F4':0x3D,'F5':0x3E,'F6':0x3F,
+  'F7':0x40,'F8':0x41,'F9':0x42,'F10':0x43,'F11':0x44,'F12':0x45,
+  'F13':0x68,'F14':0x69,'F15':0x6A,'F16':0x6B,'F17':0x6C,'F18':0x6D,
+  'F19':0x6E,'F20':0x6F,'F21':0x70,'F22':0x71,'F23':0x72,'F24':0x73,
+  'PrtSc':0x46,'Insert':0x49,'Home':0x4A,'Page Up':0x4B,
+  'Delete':0x4C,'End':0x4D,'Page Down':0x4E,
+  'Right':0x4F,'Left':0x50,'Down':0x51,'Up':0x52,
+  'Num0':0x62,'Num1':0x59,'Num2':0x5A,'Num3':0x5B,'Num4':0x5C,
+  'Num5':0x5D,'Num6':0x5E,'Num7':0x5F,'Num8':0x60,'Num9':0x61,
+};
+
+const MOD_FLAGS = { 'Ctrl':0x01, 'Shift':0x02, 'Alt':0x04, 'Win':0x08 };
+
+// HID Consumer Control usage IDs — confirmed from USBPcap of proprietary software.
+// play_pause=0xCD, next=0xB5, vol_up=0xE9, vol_down=0xEA, mute=0xE2 are pcap-verified.
+// prev=0xB6, stop=0xB7, bright_up=0x6F, bright_down=0x70 are standard HID Consumer values.
+const MEDIA_FW = {
+  'vol_down':   0xEA,
+  'vol_up':     0xE9,
+  'mute':       0xE2,
+  'play_pause': 0xCD,
+  'next':       0xB5,
+  'prev':       0xB6,
+  'stop':       0xB7,
+  'bright_up':  0x6F,
+  'bright_down':0x70,
+};
+
+const SLOT_ID_L1 = {
+  'K1':0x01,'K2':0x02,'K3':0x03,'K4':0x04,'K5':0x05,'K6':0x06,
+  'knob-left':0x0D,'knob-click':0x0E,'knob-right':0x0F,
+};
+
+// ── v3.3 MACRO TRIGGER MAPPING ─────────────────────────────────────────────
+// The dongle's firmware speaks only HID keyboard (type=0x01) and HID consumer
+// control (type=0x02). It cannot emit mouse events directly. So when a slot
+// is set to "Macro" type, we program the firmware to emit a unique, unlikely
+// trigger combo — Ctrl+Alt+Shift+F-key — and the host-side AHK helper script
+// (see "Macro Helper (AHK)" card) intercepts that combo and plays back the
+// macro steps (text, key combos, mouse clicks, wheel, waits).
+const MACRO_TRIGGERS = {
+  'K1':'F13','K2':'F14','K3':'F15','K4':'F16','K5':'F17','K6':'F18',
+  'knob-left':'F19','knob-click':'F20','knob-right':'F21',
+};
+const MACRO_TRIGGER_MODS = ['Ctrl','Alt','Shift'];
+
+function macroTriggerComboFor(kid) {
+  const key = MACRO_TRIGGERS[kid]; if (!key) return null;
+  return { mods: MACRO_TRIGGER_MODS.slice(), key };
+}
+
+function encodeAssignment(d, kid) {
+  if (!d || !d.type) return { type:0x00, mod:0x00, code:0x00 };
+  if (d.type === 'shortcut' || d.type === 'app') {
+    const sc = d.shortcut || {};
+    let mod = 0;
+    (sc.mods || []).forEach(m => { mod |= (MOD_FLAGS[m] || 0); });
+    return { type:0x01, mod, code: HID_KEYCODES[sc.key] || 0x00 };
+  }
+  if (d.type === 'media') return { type:0x02, mod:0x00, code: MEDIA_FW[d.media] || 0x00 };
+  if (d.type === 'macro') {
+    const combo = macroTriggerComboFor(kid);
+    if (!combo) return { type:0x00, mod:0x00, code:0x00 };
+    let mod = 0;
+    combo.mods.forEach(m => { mod |= (MOD_FLAGS[m] || 0); });
+    return { type:0x01, mod, code: HID_KEYCODES[combo.key] || 0x00 };
+  }
+  return { type:0x00, mod:0x00, code:0x00 };
+}
+
+function pad64(prefix) {
+  const buf = new Uint8Array(64);
+  buf.set(prefix.slice(0, 64));
+  return buf;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  MULTI-LAYER PROTOCOL — pcap-confirmed from test_layers.pcap
+//
+//  Layer encoding (from pcap analysis):
+//    INIT packet   : [0xA1, LAYER, 0x00, 0x00]
+//    CMD byte      : high nibble = LAYER, low nibble = action type
+//      low 0x0 = null/clear  → 3-packet
+//      low 0x1 = shortcut    → 4-packet  [slot, cmd, 0x01, type, mod, code, 0x00]
+//      low 0x2 = media       → 3-packet  [slot, cmd, consumerCode, 0x00]
+//    END packet    : [0xAA, 0xAA, 0x00, 0x00]
+//
+//  Layers 1-3 are device-confirmed. Layers 4-10 use same nibble pattern.
+// ──────────────────────────────────────────────────────────────────────────────
+function buildSlotPackets(kid, d, layer) {
+  const slot = SLOT_ID_L1[kid];
+  if (slot === undefined) throw new Error(`Unknown slot for ${kid}`);
+  const L = layer || 1;
+  const cmdBase = (L & 0x0F) << 4;  // high nibble = layer
+
+  const enc = encodeAssignment(d, kid);
+
+  // Null / clear — cmd = (L<<4)|0x00
+  if (!d || !d.type || d.type === 'null' || (enc.type === 0x00 && enc.mod === 0x00 && enc.code === 0x00)) {
+    return [
+      pad64(Uint8Array.from([0xA1, L, 0x00, 0x00])),
+      pad64(Uint8Array.from([slot, cmdBase | 0x00, 0x00, 0x00])),
+      pad64(Uint8Array.from([0xAA, 0xAA, 0x00, 0x00])),
+    ];
+  }
+
+  // Media — cmd = (L<<4)|0x02  (3-packet)
+  if (d.type === 'media') {
+    const consumerCode = MEDIA_FW[d.media] || 0x00;
+    return [
+      pad64(Uint8Array.from([0xA1, L, 0x00, 0x00])),
+      pad64(Uint8Array.from([slot, cmdBase | 0x02, consumerCode, 0x00])),
+      pad64(Uint8Array.from([0xAA, 0xAA, 0x00, 0x00])),
+    ];
+  }
+
+  // Shortcut / app / macro-trigger — cmd = (L<<4)|0x01  (4-packet)
+  // Macros are programmed as Ctrl+Alt+Shift+F13..F21 trigger combos that the
+  // AHK helper script intercepts to play back the actual mouse/key sequence.
+  return [
+    pad64(Uint8Array.from([0xA1, L, 0x00, 0x00])),
+    pad64(Uint8Array.from([slot, cmdBase | 0x01, 0x01, 0x00, 0x00, 0x00, 0x00])),
+    pad64(Uint8Array.from([slot, cmdBase | 0x01, 0x01, enc.type, enc.mod, enc.code, 0x00])),
+    pad64(Uint8Array.from([0xAA, 0xAA, 0x00, 0x00])),
+  ];
+}
+// Legacy alias (Block 2 sends layer 1 explicitly)
+function buildSlotPacketsLayer1(kid, d) { return buildSlotPackets(kid, d, 1); }
+
+function dongleLog(msg, color) {
+  const el = document.getElementById('dongle-log');
+  if (!el) return;
+  const line = document.createElement('div');
+  line.style.cssText = `color:${color||'var(--text2)'};white-space:pre;margin-bottom:1px;`;
+  line.textContent = msg;
+  el.appendChild(line);
+  while (el.children.length > 40) el.removeChild(el.firstChild);
+  el.scrollTop = el.scrollHeight;
+}
+
+function hexPrev(buf, n=20) {
+  return [...buf.slice(0, n)].map(b => b.toString(16).padStart(2,'0')).join(' ')
+       + (buf.length > n ? ' …' : '');
+}
+
+function updateDongleStatus() {
+  const dot  = document.getElementById('dongle-dot');
+  const txt  = document.getElementById('dongle-status-txt');
+  const connected = hidDevice && hidDevice.opened;
+  if (dot) dot.classList.toggle('on', !!connected);
+  if (txt) txt.textContent = connected
+    ? `Connected: ${hidDevice.productName || 'HID device'}`
+    : 'Not connected — use Connect WebHID above';
+}
+
+
+function scanHIDDevice() {
+  if (!hidDevice || !hidDevice.opened) {
+    dongleLog('⚠  Not connected — scan unavailable.', 'var(--accent3)');
+    return;
+  }
+  dongleLog('── HID Descriptor Scan ─────────────────', 'var(--accent4)');
+  dongleLog(`   Product  : ${hidDevice.productName || '(none)'}`);
+  dongleLog(`   VID/PID  : 0x${hidDevice.vendorId.toString(16).padStart(4,'0')} / 0x${hidDevice.productId.toString(16).padStart(4,'0')}`);
+  dongleLog(`   Index    : ${hidDeviceIndex}`);
+  const cols = hidDevice.collections || [];
+  dongleLog(`   Collections: ${cols.length}`);
+  cols.forEach((col, i) => {
+    const up = col.usagePage?.toString(16).padStart(4,'0') ?? '??';
+    const u  = col.usage?.toString(16).padStart(4,'0') ?? '??';
+    dongleLog(`   [${i}] usagePage=0x${up} usage=0x${u} type=${col.type}`);
+    (col.outputReports || []).forEach(r => dongleLog(`      → OUTPUT reportId=0x${r.reportId.toString(16).padStart(2,'0')}`, 'var(--accent2)'));
+    (col.inputReports || []).forEach(r => dongleLog(`      ← INPUT  reportId=0x${r.reportId.toString(16).padStart(2,'0')}`, 'var(--text3)'));
+    (col.featureReports || []).forEach(r => dongleLog(`      ♦ FEATURE reportId=0x${r.reportId.toString(16).padStart(2,'0')}`, '#b4a7ff'));
+  });
+  if (_lastInputReports.length) {
+    dongleLog('   Recent input reports:', 'var(--text2)');
+    _lastInputReports.slice(-8).forEach(x => dongleLog(`      rpt=0x${x.reportId.toString(16).padStart(2,'0')} ${x.bytes}`, 'var(--text3)'));
+  }
+  dongleLog('── End scan ────────────────────────────', 'var(--accent4)');
+}
+
+let _workingRid = 0x03;
+
+async function sendReportFast(buf64, reportId = _workingRid) {
+  await hidDevice.sendReport(reportId, buf64);
+  return reportId;
+}
+
+async function sendSlotPacketsWith(reportId, kid, d, delayMs=60, layer=1) {
+  const packets = buildSlotPackets(kid, d, layer);
+  const enc = encodeAssignment(d, kid);
+  dongleLog(`→ [L${layer}] ${kid} rid=0x${reportId.toString(16).padStart(2,'0')} type=${enc.type.toString(16).padStart(2,'0')} mod=${enc.mod.toString(16).padStart(2,'0')} code=${enc.code.toString(16).padStart(2,'0')} delay=${delayMs}ms`, 'var(--text2)');
+  for (const pkt of packets) {
+    dongleLog(`   ${hexPrev(pkt, 8)}`, 'var(--text3)');
+    await sendReportFast(pkt, reportId);
+    await new Promise(r => setTimeout(r, delayMs));
+  }
+}
+
+async function sendLayerToDevice(layer, onProgress) {
+  updateDongleStatus();
+  if (!hidDevice || !hidDevice.opened) {
+    dongleLog('⚠  Not connected. Click Connect WebHID first.', 'var(--accent3)');
+    return false;
+  }
+  const lc = config[layer] || {};
+  const assigned = ALL_IDS.filter(k => lc[k]);
+  if (!assigned.length) {
+    dongleLog('ℹ  No assignments to send.', 'var(--text3)');
+    if (onProgress) onProgress(100);
+    return true;
+  }
+  dongleLog(`── Sending ${assigned.length} key(s) · reportId 0x${_workingRid.toString(16).padStart(2,'0')} ─────────`, 'var(--accent4)');
+  if (onProgress) onProgress(5);
+  try {
+    let sent = 0;
+    for (const kid of ALL_IDS) {
+      if (!(kid in lc)) continue;
+      await sendSlotPacketsWith(_workingRid, kid, lc[kid], 80, layer);
+      sent++;
+      if (onProgress) onProgress(5 + Math.round((sent / assigned.length) * 90));
+    }
+    dongleLog('Config sent.', 'var(--accent2)');
+    dongleLog('ℹ  If nothing changed, try "Cycle Selected HID Device", then "Reopen Current HID Device", then send again.', 'var(--text3)');
+    if (onProgress) onProgress(100);
+    return true;
+  } catch(err) {
+    dongleLog(`✗  ${err.message}`, 'var(--accent3)');
+    return false;
+  }
+}
+
+async function diagnosticWriteLayer1() {
+  updateDongleStatus();
+  if (!hidDevice || !hidDevice.opened) {
+    dongleLog('⚠ Not connected. Click Connect WebHID first.', 'var(--accent3)');
+    return false;
+  }
+  const lc = config[1];
+  const assigned = ALL_IDS.filter(k => lc[k]);
+  if (!assigned.length) {
+    dongleLog('ℹ Layer 1 has no assignments to test.', 'var(--text3)');
+    return false;
+  }
+  const targetKid = assigned[0];
+  dongleLog('═══════ Diagnostic Layer 1 write ═══════', 'var(--accent4)');
+  dongleLog(`Testing first assigned slot only: ${targetKid}`, 'var(--text2)');
+  const reportIds = [0x03, 0x00, 0x01, 0x02];
+  const delays = [40, 100];
+  for (const rid of reportIds) {
+    for (const delay of delays) {
+      try {
+        dongleLog(`• Attempt rid=0x${rid.toString(16).padStart(2,'0')} delay=${delay}ms on device index ${hidDeviceIndex}`, 'var(--accent4)');
+        await reopenHIDDevice();
+        await new Promise(r => setTimeout(r, 300));
+        await sendSlotPacketsWith(rid, targetKid, lc[targetKid], delay, 1);
+        dongleLog('  Sent. Test the keypad now; if nothing changed, use Cycle Selected HID Device and run this again.', 'var(--accent2)');
+      } catch(err) {
+        dongleLog(`  ✗ ${err.message}`, 'var(--accent3)');
+      }
+    }
+  }
+  dongleLog('═══════ End diagnostic ═══════', 'var(--accent4)');
+  return true;
+}
+
+async function sendCurrentLayer() {
+  await sendLayerToDevice(currentLayer);
+}
+
+async function sendAllLayers(onProgress) {
+  return sendLayerToDevice(1, onProgress);
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+// Check WebHID support
+if (!navigator.hid) {
+  const hb=document.getElementById('hid-btn');
+  hb.title='WebHID requires Chrome or Edge'; hb.style.opacity='.5';
+}
+// Block 2 overrides loadPersistedState and calls it during its own IIFE init.
+// Block 1's init only needs to render the UI with the initial (empty) state.
+refreshDevice();
+renderSummary();
+</script>
+
+<script>
+(function(){
+  const PROFILE_STORAGE_KEY = 'macro-keypad-profiles-v2';
+  const ACTIVE_PROFILE_KEY  = 'macro-keypad-active-profile-v2';
+  const logLines = [];
+
+  function nullAssignment(){ return {type:'null', label:'NULL'}; }
+  function fullNullConfig(){ const o={}; ALL_IDS.forEach(k=>o[k]=nullAssignment()); return o; }
+  function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
+
+  let userProfiles = {};
+  let currentProfileName = 'Default';
+  let builtInProfiles = {};
+  Object.entries(PRESETS).forEach(([k,v]) => builtInProfiles[k] = clone(v));
+
+  // ── Schema helpers ─────────────────────────────────────────────────────────
+  // Profile schema v2: { layer1:{...assignments}, layer2:{...}, layer3:{...} }
+  // Profiles stored before this schema were flat assignment objects — migrate them.
+  function normalizeCfg(cfg){
+    const out={};
+    ALL_IDS.forEach(k => { if (cfg && cfg[k]) out[k]=cfg[k]; });
+    return out;
+  }
+  function migrateProfile(prof){
+    if (prof && prof.layer1 !== undefined) return prof; // already v2 schema
+    return { layer1: normalizeCfg(prof||{}) }; // legacy flat → v2
+  }
+  function packProfile(){
+    return { layer1: normalizeCfg(config[1] || {}) };
+  }
+  function unpackProfile(prof){
+    const m = migrateProfile(prof);
+    config[1] = normalizeCfg(m.layer1 || {});
+  }
+  function getCurrentConfig(){ return config[currentLayer] || config[1]; }
+
+  // ── Storage ────────────────────────────────────────────────────────────────
+  function saveProfiles(){
+    userProfiles[currentProfileName] = packProfile();
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfiles));
+    localStorage.setItem(ACTIVE_PROFILE_KEY, currentProfileName);
+  }
+  function loadProfiles(){
+    try{
+      const raw = JSON.parse(localStorage.getItem(PROFILE_STORAGE_KEY) || '{}') || {};
+      Object.keys(raw).forEach(k => { raw[k] = migrateProfile(raw[k]); });
+      userProfiles = raw;
+    }catch(_){ userProfiles = {}; }
+    if (!Object.keys(userProfiles).length){
+      userProfiles = { Default: packProfile() };
+    }
+    currentProfileName = localStorage.getItem(ACTIVE_PROFILE_KEY) || Object.keys(userProfiles)[0] || 'Default';
+    if (!userProfiles[currentProfileName]) currentProfileName = Object.keys(userProfiles)[0];
+    unpackProfile(userProfiles[currentProfileName]);
+    currentLayer = 1;
+    // Restore preset theme if one was active
+    const savedPreset = localStorage.getItem('keypad-active-preset');
+    if (savedPreset) applyPresetTheme(savedPreset);
+  }
+
+  // ── Profile actions ────────────────────────────────────────────────────────
+  function loadProfile(name){
+    saveProfiles();
+    currentProfileName = name;
+    const src = builtInProfiles[name]
+      ? { layer1: normalizeCfg(clone(builtInProfiles[name])) }
+      : (userProfiles[name] || {});
+    unpackProfile(src);
+    if (!builtInProfiles[name]) localStorage.setItem(ACTIVE_PROFILE_KEY, currentProfileName);
+    // Clear preset theme when loading a non-preset profile
+    if (!PRESETS[name]) { applyPresetTheme(null); localStorage.removeItem('keypad-active-preset'); }
+    selectedId = null; captureMode = false;
+    refreshDevice(); renderSummary(); renderEditor(); refreshMapTable(); refreshProfileUI();
+  }
+  function saveCurrentAsUserProfile(name){
+    userProfiles[name] = packProfile();
+    currentProfileName = name;
+    saveProfiles();
+    refreshProfileUI();
+  }
+  function newProfile(){
+    const name = prompt('New profile name:');
+    if (!name) return;
+    const clean = name.trim();
+    if (!clean) return;
+    if (builtInProfiles[clean] || userProfiles[clean]) { alert('That profile already exists.'); return; }
+    userProfiles[clean] = { layer1: fullNullConfig() };
+    currentProfileName = clean;
+    unpackProfile(userProfiles[clean]);
+    saveProfiles();
+    refreshDevice(); renderSummary(); renderEditor(); refreshMapTable(); refreshProfileUI();
+  }
+  function renameProfile(){
+    if (builtInProfiles[currentProfileName]) { alert('Built-in presets cannot be renamed. Use Save Copy first.'); return; }
+    const name = prompt('Rename profile to:', currentProfileName);
+    if (!name) return;
+    const clean = name.trim();
+    if (!clean || clean === currentProfileName) return;
+    if (builtInProfiles[clean] || userProfiles[clean]) { alert('That profile already exists.'); return; }
+    userProfiles[clean] = packProfile();
+    delete userProfiles[currentProfileName];
+    currentProfileName = clean;
+    saveProfiles();
+    refreshProfileUI();
+  }
+  function deleteProfile(){
+    if (builtInProfiles[currentProfileName]) { alert('Built-in presets cannot be deleted.'); return; }
+    const names = Object.keys(userProfiles);
+    if (names.length <= 1) { alert('Keep at least one user profile.'); return; }
+    if (!confirm(`Delete profile "${currentProfileName}"?`)) return;
+    delete userProfiles[currentProfileName];
+    currentProfileName = Object.keys(userProfiles)[0];
+    unpackProfile(userProfiles[currentProfileName]);
+    saveProfiles();
+    refreshDevice(); renderSummary(); renderEditor(); refreshMapTable(); refreshProfileUI();
+  }
+  function saveCopyOfCurrent(){
+    const name = prompt('Save current profile as:', currentProfileName + ' Copy');
+    if (!name) return;
+    const clean = name.trim();
+    if (!clean) return;
+    userProfiles[clean] = packProfile();
+    currentProfileName = clean;
+    saveProfiles();
+    refreshProfileUI();
+  }
+  function refreshProfileUI(){
+    const sel = document.getElementById('profile-select');
+    if (!sel) return;
+    const names = [...Object.keys(userProfiles), ...Object.keys(builtInProfiles).filter(n => !(n in userProfiles))];
+    sel.innerHTML = names.map(n => `<option value="${n}">${n}</option>`).join('');
+    sel.value = currentProfileName;
+    const badge = document.getElementById('profile-hint');
+    if (badge) badge.textContent = builtInProfiles[currentProfileName] && !userProfiles[currentProfileName] ? 'Built-in preset' : 'Editable profile';
+    const send = document.getElementById('send-layer-num');
+    if (send) send.textContent = currentProfileName;
+    // v3.3: mirror current profile name onto window so the AHK exporter can read it.
+    window.currentProfileName = currentProfileName;
+  }
+
+  // preserve original logger, but retain full history
+  const origDongleLog = window.dongleLog;
+  window.dongleLog = function(msg, color){
+    logLines.push(msg);
+    origDongleLog(msg, color);
+  };
+  function downloadFullLog(filename='keypad-diagnostic-log.txt'){
+    const blob = new Blob([logLines.join('\n')], {type:'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+  }
+  window.downloadFullLog = downloadFullLog;
+
+  // keep UI synced
+  const origRefreshDevice = window.refreshDevice;
+  window.refreshDevice = function(){
+    // Do NOT reset currentLayer here — setLayer() owns that state.
+    origRefreshDevice();
+    refreshMapTable();
+    if (typeof refreshAHKStats === 'function') refreshAHKStats();
+  };
+  const origRenderSummary = window.renderSummary;
+  window.renderSummary = function(){
+    document.getElementById('sum-layer-num').textContent = currentProfileName;
+    origRenderSummary();
+  };
+  const origSaveKey = window.saveKey;
+  window.saveKey = function(){
+    origSaveKey();
+    saveProfiles();
+    refreshMapTable();
+  };
+  window.clearKey = function(){
+    if(!selectedId) return;
+    getCurrentConfig()[selectedId] = nullAssignment();
+    captureMode = false;
+    refreshDevice(); renderSummary(); renderEditor(); saveProfiles();
+  };
+  window.resetAllData = function(){
+    if (!confirm('Reset every key in the current profile to NULL?')) return;
+    config[1] = fullNullConfig();
+    selectedId = null;
+    captureMode = false;
+    refreshDevice(); renderSummary(); renderEditor(); saveProfiles();
+    dongleLog('ℹ Current profile reset to NULL for all keys. Send to dongle to apply.', 'var(--text2)');
+  };
+  window.loadPreset = function(name){
+    const preset = PRESETS[name];
+    if (!preset) return;
+    config[1] = clone(preset);
+    applyPresetTheme(name);
+    localStorage.setItem('keypad-active-preset', name);
+    document.getElementById('overlay').classList.remove('open');
+    selectedId = null; captureMode = false;
+    saveProfiles();
+    refreshDevice(); renderSummary(); renderEditor(); refreshProfileUI();
+  };
+  function setSendProgress(pct) {
+    const fill = document.getElementById('send-progress-fill');
+    if (fill) fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+  }
+  function showSendOverlay() {
+    const ov  = document.getElementById('send-overlay');
+    const txt = document.getElementById('send-overlay-text');
+    const sub = document.getElementById('send-overlay-sub');
+    if (!ov) return;
+    txt.textContent   = 'Sending…';
+    txt.style.color   = '#fff';
+    sub.textContent   = 'Writing config to device';
+    setSendProgress(0);
+    ov.classList.add('active');
+  }
+  function updateLastSentBar() {
+    const bar = document.getElementById('last-sent-bar');
+    if (!bar) return;
+    try {
+      const rec = JSON.parse(localStorage.getItem('keypad-last-sent-v1') || 'null');
+      if (rec && rec.ts) {
+        const d = new Date(rec.ts);
+        const time = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        const date = d.toLocaleDateString([], {month:'short', day:'numeric'});
+        bar.textContent = `Last sent: "${rec.profile}" — ${date} at ${time}`;
+        bar.style.color = 'var(--accent2)';
+      } else {
+        bar.textContent = 'Not yet sent this session';
+      }
+    } catch(_) {}
+  }
+  function hideSendOverlay(success) {
+    const ov  = document.getElementById('send-overlay');
+    const txt = document.getElementById('send-overlay-text');
+    const sub = document.getElementById('send-overlay-sub');
+    if (!ov) return;
+    setSendProgress(100);
+    txt.textContent  = success ? 'Confirmed' : 'Done';
+    txt.style.color  = success ? 'var(--accent2)' : 'var(--accent4)';
+    sub.textContent  = success ? 'Config applied to device' : 'Check diagnostics for details';
+    if (success) {
+      try {
+        localStorage.setItem('keypad-last-sent-v1', JSON.stringify({
+          profile: currentProfileName || 'Unknown',
+          ts: Date.now()
+        }));
+      } catch(_) {}
+      updateLastSentBar();
+    }
+    setTimeout(() => ov.classList.remove('active'), 1400);
+  }
+  window.sendCurrentLayer = async function(){
+    showSendOverlay();
+    const ok = await sendLayerToDevice(1, setSendProgress);
+    hideSendOverlay(ok);
+  };
+  const _origSendAllLayers = sendAllLayers;
+  window.sendAllLayers = async function(){
+    showSendOverlay();
+    const ok = await _origSendAllLayers(setSendProgress);
+    hideSendOverlay(ok);
+  };
+  const origDiag = window.diagnosticWriteLayer1;
+  window.diagnosticWriteLayer1 = async function(){
+    const ok = await origDiag();
+    downloadFullLog(`keypad-diagnostic-${new Date().toISOString().replace(/[:.]/g,'-')}.txt`);
+    return ok;
+  };
+
+  // import/export becomes profiles + mappings JSON
+  window.exportStateObject = function(){
+    saveProfiles();
+    return {
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      activeProfile: currentProfileName,
+      userProfiles,
+      codeToKeyId
+    };
+  };
+  window.downloadJSON = function(){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(exportStateObject(), null, 2)], {type:'application/json'}));
+    a.download = 'keypad-profiles.json';
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+  };
+  window.applyImportedState = function(data){
+    // Support v2 export (userProfiles dict) and legacy v1 export (flat config object).
+    if (data.userProfiles) {
+      userProfiles = data.userProfiles;
+    } else {
+      // Wrap legacy flat config in a v2-compatible profile.
+      const flat = data.config?.[1] || data.config || data;
+      userProfiles = { Imported: { layer1: normalizeCfg(flat), layer2: {}, layer3: {} } };
+    }
+    currentProfileName = data.activeProfile || Object.keys(userProfiles)[0] || 'Imported';
+    if (!userProfiles[currentProfileName]) currentProfileName = Object.keys(userProfiles)[0];
+    Object.keys(codeToKeyId).forEach(k => delete codeToKeyId[k]);
+    Object.entries(data.codeToKeyId || {}).forEach(([code, slot]) => { codeToKeyId[code] = slot; });
+    unpackProfile(userProfiles[currentProfileName]);
+    saveProfiles();
+    refreshDevice(); renderSummary(); renderEditor(); refreshProfileUI();
+  };
+  window.persistState = function(){ saveProfiles(); localStorage.setItem('macro-keypad-mapping-v2', JSON.stringify(codeToKeyId)); };
+  window.loadPersistedState = function(){
+    loadProfiles();
+    try{
+      const mapping = JSON.parse(localStorage.getItem('macro-keypad-mapping-v2') || '{}') || {};
+      Object.keys(codeToKeyId).forEach(k => delete codeToKeyId[k]);
+      Object.entries(mapping).forEach(([code, slot]) => codeToKeyId[code] = slot);
+    }catch(_){}
+  };
+
+  function assignmentText(kid){
+    const d = getCurrentConfig()[kid];
+    if (!d) return '—';
+    if (d.type === 'null') return 'NULL';
+    return d.label || autoLabel(d);
+  }
+  function fwText(kid){
+    const d = getCurrentConfig()[kid];
+    const enc = encodeAssignment(d, kid);
+    if (!d) return '—';
+    if (enc.type === 0) return 'NULL packet';
+    let out = `type=${enc.type.toString(16).padStart(2,'0')} mod=${enc.mod.toString(16).padStart(2,'0')} code=${enc.code.toString(16).padStart(2,'0')}`;
+    if (d.type === 'macro') out += ' (AHK trigger)';
+    return out;
+  }
+  window.refreshMapTable = function(){
+    const tbody = document.getElementById('map-tbody');
+    if (!tbody) return;
+    const labels = {'knob-left':'Knob CCW','knob-right':'Knob CW','knob-click':'Knob Press'};
+    tbody.innerHTML = ALL_IDS.map(kid => {
+      const code = getDetectedCodeForSlot(kid) || '—';
+      const assigned = assignmentText(kid);
+      const status = code !== '—' ? 'Mapped' : (assigned !== '—' ? 'Assigned' : 'Unknown');
+      const dot = code !== '—' ? 'dot-detected' : (assigned !== '—' ? 'dot-assigned' : 'dot-empty');
+      return `<tr>
+        <td>${labels[kid] || kid}</td>
+        <td><span class="map-code">${code}</span></td>
+        <td>${assigned}</td>
+        <td><span class="map-code">${fwText(kid)}</span></td>
+        <td><span class="map-status-dot ${dot}"></span>${status}</td>
+      </tr>`;
+    }).join('');
+    ALL_IDS.forEach(kid => {
+      const raw = document.getElementById('raw-' + kid);
+      if (raw) raw.textContent = getDetectedCodeForSlot(kid);
+    });
+  };
+  window.updateDetectedCodeTable = function(kid, code){
+    refreshMapTable();
+  };
+  function rebuildTopBar(){
+    const bar = document.getElementById('profile-bar') || document.querySelector('.layer-tabs');
+    if (!bar) return;
+    bar.style.justifyContent = 'space-between';
+    bar.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <label style="font-size:11px;color:var(--text2);font-weight:700;white-space:nowrap;">Profile</label>
+        <select id="profile-select" class="form-select" style="max-width:200px;padding:7px 10px;" onchange="loadProfile(this.value)"></select>
+        <span class="layer-hint" id="profile-hint"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="preset-btn" onclick="newProfile()">＋ New</button>
+        <button class="preset-btn" onclick="saveCopyOfCurrent()">💾 Save Copy</button>
+        <button class="preset-btn" onclick="renameProfile()">✏ Rename</button>
+        <button class="preset-btn" onclick="deleteProfile()">🗑 Delete</button>
+        <button class="preset-btn" onclick="document.getElementById('overlay').classList.add('open')">⚡ Built-in Presets</button>
+      </div>
+    `;
+  }
+  window.newProfile = newProfile;
+  window.renameProfile = renameProfile;
+  window.deleteProfile = deleteProfile;
+  window.saveCopyOfCurrent = saveCopyOfCurrent;
+  window.loadProfile = loadProfile;
+
+  function rebuildMapCard(){
+    const cards = document.querySelectorAll('.device-card');
+    if (cards[1]) {
+      const title = cards[1].querySelector('.device-card-title');
+      if (title) title.textContent = 'Key Map & Assignments';
+      const p = cards[1].querySelector('p');
+      if (p) p.textContent = 'Capture a physical keyboard-style code if available, then review its assignment and firmware packet side by side. Media actions may not show in browser live detection.';
+      const table = cards[1].querySelector('table');
+      if (table) {
+        table.innerHTML = `<thead><tr><th>Pad Key</th><th>Detected Code</th><th>Assignment</th><th>Firmware</th><th>Status</th></tr></thead><tbody id="map-tbody"></tbody>`;
+      }
+    }
+  }
+  function rebuildExportCard(){
+    const cards = document.querySelectorAll('.card');
+    for (const c of cards) {
+      const title = c.querySelector('.card-title');
+      if (title && title.textContent.trim() === 'Export') {
+        title.textContent = 'Import / Export';
+        c.innerHTML = `
+          <div class="card-title">Import / Export</div>
+          <div class="export-row">
+            <button class="exp-btn" onclick="document.getElementById('json-import').click()">📂 Import JSON</button>
+            <button class="exp-btn" onclick="downloadJSON()">💾 Export JSON</button>
+          </div>
+          <input id="json-import" type="file" accept=".json,application/json" style="display:none" onchange="importJSONFile(event)">
+          <div class="export-row" style="margin-top:7px;">
+            <button class="exp-btn" onclick="resetAllData()">🗑 Reset Profile to NULL</button>
+          </div>
+          <div class="exp-msg" id="exp-msg">✓ Done</div>
+        `;
+      }
+      if (title && title.textContent.trim() === 'Send to Dongle') {
+        const log = c.querySelector('#dongle-log');
+        if (log) { log.style.maxHeight = '260px'; log.style.minHeight = '180px'; log.style.resize = 'vertical'; }
+        const diagBtn = [...c.querySelectorAll('button')].find(b => b.textContent.includes('Diagnostic'));
+        if (diagBtn) diagBtn.textContent = '🧪 Diagnostic Write + Save Full Log';
+        const extra = document.createElement('button');
+        extra.className = 'dongle-btn';
+        extra.textContent = '📝 Download Full Log (.txt)';
+        extra.onclick = () => downloadFullLog(`keypad-log-${new Date().toISOString().replace(/[:.]/g,'-')}.txt`);
+        c.appendChild(extra);
+      }
+    }
+  }
+
+  // rebootstrap from profile storage, then rebuild UI
+  loadPersistedState();
+  rebuildTopBar();
+  rebuildMapCard();
+  rebuildExportCard();
+  refreshProfileUI();
+  refreshDevice();
+  renderSummary();
+  renderEditor();
+  refreshMapTable();
+})();
+</script>
+
+
+<script>
+(function(){
+  function scoreHIDDevice(d){
+    let score = 0;
+    for (const col of (d.collections || [])) {
+      if (col.usagePage === 0xff00 && col.usage === 0x0001) score += 100;
+      if ((col.outputReports || []).some(r => r.reportId === 0x03)) score += 50;
+      if ((col.inputReports || []).some(r => r.reportId === 0x03)) score += 25;
+      if (col.usagePage === 0x000c && col.usage === 0x0001) score -= 25;
+      if (col.usagePage === 0x0001 && col.usage === 0x0006) score -= 10;
+    }
+    return score;
+  }
+
+  function summarizeCollections(d){
+    return (d.collections || []).map((col, i) => {
+      const out = (col.outputReports || []).map(r => '0x' + r.reportId.toString(16).padStart(2,'0')).join(',') || '-';
+      const inn = (col.inputReports || []).map(r => '0x' + r.reportId.toString(16).padStart(2,'0')).join(',') || '-';
+      return `[${i}] up=0x${(col.usagePage ?? 0).toString(16).padStart(4,'0')} u=0x${(col.usage ?? 0).toString(16).padStart(4,'0')} out=${out} in=${inn}`;
+    }).join(' | ');
+  }
+
+  window.connectHID = async function(){
+    const btn = document.getElementById('hid-btn');
+    if (!navigator.hid) {
+      btn.textContent = '⚠ WebHID not supported';
+      btn.classList.add('unavailable');
+      alert('WebHID is only supported in Chrome or Edge.');
+      return;
+    }
+    try {
+      const requested = await navigator.hid.requestDevice({ filters: [{ vendorId: 0x1189, productId: 0x8890 }] });
+      const authorized = await listAuthorizedHIDDevices();
+      hidAuthorizedDevices = authorized.length ? authorized : requested;
+      if (!hidAuthorizedDevices.length) return;
+
+      dongleLog(`ℹ Authorized HID interfaces for VID 1189 / PID 8890: ${hidAuthorizedDevices.length}`, 'var(--text2)');
+      hidAuthorizedDevices.forEach((d, i) => {
+        dongleLog(`   [${i}] ${(d.productName || '?')} · ${(d.collections?.length ?? 0)} collection(s) · score=${scoreHIDDevice(d)} · opened=${!!d.opened}`, 'var(--text3)');
+        dongleLog(`      ${summarizeCollections(d)}`, 'var(--text3)');
+      });
+
+      let bestIndex = 0;
+      let bestScore = -Infinity;
+      hidAuthorizedDevices.forEach((d, i) => {
+        const s = scoreHIDDevice(d);
+        if (s > bestScore) { bestScore = s; bestIndex = i; }
+      });
+
+      await attachHIDDevice(hidAuthorizedDevices[bestIndex], bestIndex);
+      dongleLog(`✓ Auto-selected HID device [${bestIndex}] as programming interface`, 'var(--accent2)');
+    } catch(err) {
+      if (err.name !== 'NotAllowedError') alert('Could not connect: ' + err.message);
+    }
+  };
+
+  function rebuildSendCardFinal(){
+    const cards = [...document.querySelectorAll('.card')];
+    const sendCard = cards.find(c => {
+      const t = c.querySelector('.card-title');
+      return t && (t.textContent.trim() === 'Send to Dongle' || t.textContent.trim() === 'Send to Device');
+    });
+    if (!sendCard) return;
+    sendCard.innerHTML = `
+      <div class="card-title">Send to Device</div>
+      <div class="dongle-status">
+        <div class="dongle-dot" id="dongle-dot"></div>
+        <span id="dongle-status-txt">Not connected — use Connect WebHID above</span>
+      </div>
+      <button class="dongle-btn primary" onclick="sendCurrentLayer()" id="btn-send-config">
+        🔄 Send New Config to Active Layer
+      </button>
+      <div id="last-sent-bar" style="margin-top:8px; font-size:11px; color:var(--text3); min-height:16px;"></div>
+      <div style="margin-top:6px; font-size:10px; color:var(--text3); line-height:1.5;">
+        ⓘ The device is write-only — the app cannot read back what's stored on it.
+        The key layout above always reflects the last config written from this browser.
+      </div>
+      <details style="margin-top:10px;">
+        <summary style="cursor:pointer; color: var(--text2); font-size:11px;">Advanced diagnostics</summary>
+        <div class="dongle-log" id="dongle-log" style="max-height:260px; min-height:180px; resize:vertical; margin-top:8px;">
+          <div style="color:var(--text3);">Dormant diagnostics. Open only if needed.</div>
+        </div>
+        <button class="dongle-btn" onclick="scanHIDDevice()">🔍 Scan HID Descriptor</button>
+        <button class="dongle-btn" onclick="reopenHIDDevice()">♻ Reopen Current HID Device</button>
+        <button class="dongle-btn" onclick="cycleHIDDevice()">↻ Cycle Selected HID Device</button>
+        <button class="dongle-btn" onclick="diagnosticWriteLayer1()">🧪 Diagnostic Write + Save Full Log</button>
+        <button class="dongle-btn" onclick="downloadFullLog('keypad-log-' + new Date().toISOString().replace(/[:.]/g,'-') + '.txt')">📝 Download Full Log (.txt)</button>
+      </details>
+    `;
+    updateDongleStatus();
+    updateLastSentBar();
+  }
+
+  function retitleSummary(){
+    const title = document.querySelector('.summary-title');
+    if (title) title.innerHTML = `<span id="sum-layer-num">${(window.currentProfileName || 'Active Profile')}</span> — Assignments`;
+  }
+
+  const origToggleDetect2 = window.toggleDetect;
+  window.toggleDetect = function(){
+    origToggleDetect2();
+    const hint = document.getElementById('detect-hint');
+    if (hint) {
+      hint.textContent = detectMode
+        ? 'Keyboard shortcuts should appear here. Media actions often do not surface in browser live detection even when correctly programmed.'
+        : '';
+    }
+  };
+
+  rebuildSendCardFinal();
+  retitleSummary();
+  updateDongleStatus();
+})();
+</script>
+
+</body>
+</html>
